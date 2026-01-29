@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
-import { useToast } from '@/components/ui/toaster'
+import { useToast } from '@/components/ui/use-toast'
 import { Mic, Camera, Upload, Type, Play, Square, Trash2, Eye, EyeOff, ArrowRight } from 'lucide-react'
 
 interface CaptureSource {

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { useToast } from '@/components/ui/toaster'
+
 import { ArrowLeft, Copy, Download, FileText, RefreshCw } from 'lucide-react'
 import { extractionSchema, ExtractionData } from '@/types/schemas'
 import { jsPDF } from 'jspdf'

@@ -43,6 +43,7 @@ export interface UpdateVisitInput {
   needsConfirmation?: Partial<IVisit['needsConfirmation']>;
   sourceQualityFlags?: Partial<IVisit['sourceQualityFlags']>;
   atopicComorbidities?: Partial<IVisit['atopicComorbidities']>;
+  sources?: IVisit['sources'];
   generatedNote?: string;
   status?: 'draft' | 'completed' | 'archived';
   completedAt?: Date;
