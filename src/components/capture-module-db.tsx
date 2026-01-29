@@ -4,8 +4,9 @@ import { useState, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
-import { useToast } from '@/components/ui/toaster'
+import { useToast } from '@/components/ui/use-toast'
 import { Mic, Camera, Upload, Type, Play, Square, Trash2, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { VisitService } from '@/services/visitService'
 
 interface CaptureSource {
   id: string
@@ -21,10 +22,11 @@ interface CaptureSource {
 
 interface CaptureModuleProps {
   visitId: string
+  userId: string
   onNext: () => void
 }
 
-export function CaptureModule({ visitId, onNext }: CaptureModuleProps) {
+export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
   const [sources, setSources] = useState<CaptureSource[]>([])
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
@@ -51,7 +53,56 @@ export function CaptureModule({ visitId, onNext }: CaptureModuleProps) {
       
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' })
-        await transcribeAudio(audioBlob)
+        const reader = new FileReader()
+        
+        reader.onloadend = async () => {
+          const base64Data = reader.result as string
+          
+          try {
+            const response = await fetch('/api/transcribe', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                audio: base64Data.split(',')[1], // Remove data URL prefix
+                visitId
+              })
+            })
+            
+            if (!response.ok) {
+              throw new Error('Transcription failed')
+            }
+            
+            const result = await response.json()
+            
+            const newSource: CaptureSource = {
+              id: Date.now().toString(),
+              type: 'audio',
+              content: result.transcription,
+              metadata: {
+                timestamp: new Date().toISOString(),
+                segments: result.segments
+              }
+            }
+            
+            setSources(prev => [...prev, newSource])
+            
+            toast({
+              title: 'Audio Transcribed',
+              description: `Transcribed ${result.transcription.length} characters`
+            })
+            
+          } catch (error) {
+            toast({
+              title: 'Transcription Error',
+              description: 'Failed to transcribe audio. Please try again.',
+              variant: 'destructive'
+            })
+          }
+        }
+        
+        reader.readAsDataURL(audioBlob)
         stream.getTracks().forEach(track => track.stop())
       }
       
@@ -66,64 +117,20 @@ export function CaptureModule({ visitId, onNext }: CaptureModuleProps) {
     } catch (error) {
       toast({
         title: 'Recording Error',
-        description: 'Could not access microphone. Please check permissions.',
+        description: 'Failed to start recording. Please check microphone permissions.',
         variant: 'destructive'
       })
     }
   }
   
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop()
       setIsRecording(false)
       
       if (recordingIntervalRef.current) {
         clearInterval(recordingIntervalRef.current)
-        recordingIntervalRef.current = null
       }
-    }
-  }
-  
-  const transcribeAudio = async (audioBlob: Blob) => {
-    try {
-      const formData = new FormData()
-      formData.append('audio', audioBlob, 'recording.wav')
-      formData.append('visitId', visitId)
-      
-      const response = await fetch('/api/transcribe', {
-        method: 'POST',
-        body: formData
-      })
-      
-      if (!response.ok) {
-        throw new Error('Transcription failed')
-      }
-      
-      const result = await response.json()
-      
-      const newSource: CaptureSource = {
-        id: Date.now().toString(),
-        type: 'audio',
-        content: result.text,
-        metadata: {
-          timestamp: new Date().toISOString(),
-          segments: result.segments
-        }
-      }
-      
-      setSources(prev => [...prev, newSource])
-      
-      toast({
-        title: 'Audio Transcribed',
-        description: `Transcribed ${result.text.length} characters`
-      })
-      
-    } catch (error) {
-      toast({
-        title: 'Transcription Error',
-        description: 'Failed to transcribe audio. Please try again.',
-        variant: 'destructive'
-      })
     }
   }
   
@@ -136,64 +143,62 @@ export function CaptureModule({ visitId, onNext }: CaptureModuleProps) {
     
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
-      if (file) {
-        await processImage(file)
+      if (!file) return
+      
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('visitId', visitId)
+        
+        const response = await fetch('/api/ocr', {
+          method: 'POST',
+          body: formData
+        })
+        
+        if (!response.ok) {
+          throw new Error('OCR processing failed')
+        }
+        
+        const result = await response.json()
+        
+        const newSource: CaptureSource = {
+          id: Date.now().toString(),
+          type: 'image',
+          content: result.text,
+          metadata: {
+            filename: file.name,
+            timestamp: new Date().toISOString(),
+            confidence: result.confidence
+          }
+        }
+        
+        setSources(prev => [...prev, newSource])
+        
+        toast({
+          title: 'Image Processed',
+          description: `Extracted ${result.text.length} characters from image`
+        })
+        
+      } catch (error) {
+        toast({
+          title: 'Processing Error',
+          description: 'Failed to process image. Please try again.',
+          variant: 'destructive'
+        })
       }
     }
     
     input.click()
   }
   
-  const processImage = async (file: File) => {
-    try {
-      const formData = new FormData()
-      formData.append('image', file)
-      formData.append('visitId', visitId)
-      
-      const response = await fetch('/api/ocr', {
-        method: 'POST',
-        body: formData
-      })
-      
-      if (!response.ok) {
-        throw new Error('OCR processing failed')
-      }
-      
-      const result = await response.json()
-      
-      const newSource: CaptureSource = {
-        id: Date.now().toString(),
-        type: 'image',
-        content: result.text,
-        metadata: {
-          filename: file.name,
-          timestamp: new Date().toISOString(),
-          confidence: result.confidence
-        }
-      }
-      
-      setSources(prev => [...prev, newSource])
-      
-      toast({
-        title: 'Image Processed',
-        description: `Extracted ${result.text.length} characters (confidence: ${Math.round(result.confidence * 100)}%)`
-      })
-      
-    } catch (error) {
-      toast({
-        title: 'OCR Error',
-        description: 'Failed to process image. Please try again.',
-        variant: 'destructive'
-      })
-    }
-  }
-  
   // File upload
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
-    if (files) {
-      Array.from(files).forEach(file => processFile(file))
-    }
+    if (!files) return
+    
+    Array.from(files).forEach(async (file) => {
+      await processFile(file)
+    })
   }
   
   const processFile = async (file: File) => {
@@ -276,16 +281,28 @@ export function CaptureModule({ visitId, onNext }: CaptureModuleProps) {
       return
     }
     
-    // Store sources in session storage for the review step
-    sessionStorage.setItem(`sources_${visitId}`, JSON.stringify(sources))
-    
-    toast({
-      title: 'Analysis Started',
-      description: 'Analyzing medical information...'
-    })
-    
-    // Proceed to review step where extraction will happen automatically
-    onNext()
+    try {
+      // Update the visit in database with sources
+      const updatedVisit = await VisitService.updateVisit(visitId, userId, { sources });
+      if (!updatedVisit) {
+        throw new Error('Failed to update visit with sources');
+      }
+      
+      toast({
+        title: 'Analysis Started',
+        description: 'Analyzing medical information...'
+      })
+      
+      // Proceed to review step where extraction will happen automatically
+      onNext()
+    } catch (error) {
+      console.error('Error starting analysis:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to save sources. Please try again.',
+        variant: 'destructive'
+      })
+    }
   }
 
   const formatTime = (seconds: number) => {

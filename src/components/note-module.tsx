@@ -168,6 +168,17 @@ export function NoteModule({ visitId, onBack }: NoteModuleProps) {
         })
       )
 
+      // Patient Information Header
+      if (extraction?.patientAlias) {
+        sections.push(
+          new Paragraph({
+            text: `Patient: ${extraction.patientAlias}`,
+            heading: HeadingLevel.HEADING_2,
+            spacing: { before: 200, after: 100 }
+          })
+        )
+      }
+
       // Note content
       const lines = note.split('\n')
       lines.forEach(line => {
@@ -208,6 +219,24 @@ export function NoteModule({ visitId, onBack }: NoteModuleProps) {
         }
       })
 
+      // Add warnings if data is incomplete
+      if (extraction?.needsConfirmation && extraction.needsConfirmation.length > 0) {
+        sections.push(
+          new Paragraph({
+            text: '\n⚠️ ATTENTION: The following information requires confirmation:',
+            spacing: { before: 300 }
+          })
+        )
+        extraction.needsConfirmation.forEach(item => {
+          sections.push(
+            new Paragraph({
+              text: `• ${item}`,
+              spacing: { after: 50 }
+            })
+          )
+        })
+      }
+
       // Footer
       sections.push(
         new Paragraph({
@@ -232,18 +261,18 @@ export function NoteModule({ visitId, onBack }: NoteModuleProps) {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `allergy-note-${visitId}.docx`
+        a.download = `allergy-note-${extraction?.patientAlias || visitId}.docx`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
 
-        toast('The note has been downloaded as DOCX.', 'success')
+        toast('The medical note has been downloaded as Word document.', 'success')
       })
 
     } catch (error) {
       console.error('DOCX download error:', error)
-      toast('Failed to download DOCX.', 'error')
+      toast('Failed to download Word document.', 'error')
     }
   }
 

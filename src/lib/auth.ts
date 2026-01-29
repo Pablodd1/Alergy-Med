@@ -1,14 +1,6 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
-import bcrypt from 'bcryptjs'
-
-const users = [
-  {
-    id: '1',
-    username: process.env.DEFAULT_USERNAME || 'allergist',
-    password: bcrypt.hashSync(process.env.DEFAULT_PASSWORD || 'allergy123', 10),
-  }
-]
+import { UserService } from '@/services/userService'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -23,11 +15,11 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const user = users.find(u => u.username === credentials.username)
+        const user = await UserService.validatePassword(credentials.username, credentials.password)
         
-        if (user && bcrypt.compareSync(credentials.password, user.password)) {
+        if (user) {
           return {
-            id: user.id,
+            id: user._id,
             username: user.username,
           }
         }
@@ -59,5 +51,6 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/auth/signin',
-  }
+  },
+  secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-key-change-in-production',
 }

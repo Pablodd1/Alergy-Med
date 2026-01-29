@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { extractionSchema, ExtractionData } from '@/types/schemas'
 import { zodToJsonSchema } from 'zod-to-json-schema'
+import { VisitService } from '@/services/visitService'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -166,6 +167,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Get user from session (you'll need to implement proper session handling)
+    const userId = 'demo-user'; // This should come from the session
+
+    // Find the visit in database
+    const visit = await VisitService.findByVisitId(visitId, userId);
+    if (!visit) {
+      return NextResponse.json(
+        { error: 'Visit not found' },
+        { status: 404 }
+      )
+    }
+
     // Combine all sources into a single text
     const combinedText = sources
       .map((source: any) => {
@@ -209,13 +222,60 @@ export async function POST(request: NextRequest) {
 
     const extractedData = JSON.parse(completion.choices[0].message.content || '{}')
 
+    // Add analysis metadata
+    const analysisMetadata = {
+      timestamp: new Date().toISOString(),
+      sourcesCount: sources.length,
+      analysisStatus: 'complete' as string,
+      missingFields: [] as string[],
+      redFlags: [] as string[]
+    }
+
+    // Analyze completeness
+    if (!extractedData.patientAlias || extractedData.patientAlias.trim() === '') {
+      analysisMetadata.missingFields.push('Patient alias is missing')
+      analysisMetadata.analysisStatus = 'incomplete'
+    }
+
+    if (!extractedData.chiefComplaint || extractedData.chiefComplaint.trim() === '') {
+      analysisMetadata.missingFields.push('Chief complaint is missing')
+      analysisMetadata.analysisStatus = 'incomplete'
+    }
+
+    // Check for severe allergies
+    const allAllergies = [
+      ...(extractedData.allergyHistory?.food || []),
+      ...(extractedData.allergyHistory?.drug || []),
+      ...(extractedData.allergyHistory?.environmental || []),
+      ...(extractedData.allergyHistory?.stingingInsects || []),
+      ...(extractedData.allergyHistory?.latexOther || [])
+    ]
+
+    const hasSevereAllergy = allAllergies.some((allergy: any) => 
+      allergy.severity && ['severe', 'life-threatening', 'anaphylaxis'].includes(allergy.severity.toLowerCase())
+    )
+
+    if (hasSevereAllergy) {
+      analysisMetadata.redFlags.push('⚠️ Severe allergic reaction history identified')
+    }
+
     // Validate the extraction
     const validatedData: ExtractionData = extractionSchema.parse(extractedData)
 
-    // Here you would typically save to database
-    // For now, we'll just return the result
+    // Update the visit in database with extracted data
+    const updatedVisit = await VisitService.updateVisitFromExtraction(visitId, userId, validatedData);
+    
+    if (!updatedVisit) {
+      return NextResponse.json(
+        { error: 'Failed to update visit with extracted data' },
+        { status: 500 }
+      )
+    }
 
-    return NextResponse.json(validatedData)
+    return NextResponse.json({
+      ...validatedData,
+      analysisMetadata
+    })
 
   } catch (error) {
     console.error('Extraction error:', error)

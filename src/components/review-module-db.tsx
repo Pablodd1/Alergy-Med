@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { useToast } from '@/components/ui/toaster'
+import { useToast } from '@/components/ui/use-toast'
 import { ArrowLeft, ArrowRight, Edit3, Save, X } from 'lucide-react'
 import { extractionSchema, ExtractionData } from '@/types/schemas'
+import { VisitService } from '@/services/visitService'
 
 interface ReviewModuleProps {
   visitId: string
+  userId: string
   onBack: () => void
   onNext: () => void
 }
@@ -147,7 +149,7 @@ function AllergyHistorySection({ data, onChange }: { data: ExtractionData['aller
           ))}
         </div>
       ) : (
-        <p className="text-sm text-gray-500 italic">No {title.toLowerCase()} recorded</p>
+        <span className="text-sm text-gray-500 italic">None</span>
       )}
     </div>
   )
@@ -157,9 +159,8 @@ function AllergyHistorySection({ data, onChange }: { data: ExtractionData['aller
       <CardHeader>
         <CardTitle>Allergy History</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         {renderAllergyArray(data?.food || [], 'Food Allergies', 'food')}
-        {renderAllergyArray(data?.drug || [], 'Drug Allergies', 'drug')}
         {renderAllergyArray(data?.environmental || [], 'Environmental Allergies', 'environmental')}
         {renderAllergyArray(data?.stingingInsects || [], 'Stinging Insect Allergies', 'stingingInsects')}
         {renderAllergyArray(data?.latexOther || [], 'Latex/Other Allergies', 'latexOther')}
@@ -174,29 +175,35 @@ function MedicationsSection({ data, onChange }: { data: ExtractionData['medicati
       <CardHeader>
         <CardTitle>Current Medications</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent>
         {data && data.length > 0 ? (
-          <div className="space-y-2">
-            {data.map((med, index) => (
+          <div className="space-y-3">
+            {data.map((medication, index) => (
               <div key={index} className="border rounded p-3 space-y-1">
-                <div className="font-medium">{med.name}</div>
-                {med.dose && <div className="text-sm text-gray-600">Dose: {med.dose}</div>}
-                {med.frequency && <div className="text-sm text-gray-600">Frequency: {med.frequency}</div>}
-                {med.indication && <div className="text-sm text-gray-600">Indication: {med.indication}</div>}
-                {med.response && <div className="text-sm text-gray-600">Response: {med.response}</div>}
-                {med.adverseEffects && <div className="text-sm text-gray-600">Side Effects: {med.adverseEffects}</div>}
+                <div className="flex justify-between items-start">
+                  <div className="font-medium">{medication.name}</div>
+                  <Badge variant={medication.isActive ? 'default' : 'secondary'}>
+                    {medication.isActive ? 'Active' : 'Inactive'}
+                  </Badge>
+                </div>
+                <div className="text-sm text-gray-600 space-y-1">
+                  {medication.dosage && <div><strong>Dosage:</strong> {medication.dosage}</div>}
+                  {medication.frequency && <div><strong>Frequency:</strong> {medication.frequency}</div>}
+                  {medication.indication && <div><strong>Indication:</strong> {medication.indication}</div>}
+                  {medication.prescribedBy && <div><strong>Prescribed by:</strong> {medication.prescribedBy}</div>}
+                </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-gray-500 italic">No medications recorded</p>
+          <span className="text-sm text-gray-500 italic">No medications found</span>
         )}
       </CardContent>
     </Card>
   )
 }
 
-export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
+export function ReviewModule({ visitId, userId, onBack, onNext }: ReviewModuleProps) {
   const [extraction, setExtraction] = useState<ExtractionData | null>(null)
   const [isExtracting, setIsExtracting] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -216,13 +223,16 @@ export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
       setError(null)
       setAnalysisStatus('analyzing')
 
-      // Get sources from session storage
-      const sourcesJson = sessionStorage.getItem(`sources_${visitId}`)
-      if (!sourcesJson) {
-        throw new Error('No sources found for this visit')
+      // Get the visit from database
+      const visit = await VisitService.findByVisitId(visitId, userId);
+      if (!visit) {
+        throw new Error('Visit not found in database')
       }
 
-      const sources = JSON.parse(sourcesJson)
+      // Check if sources exist
+      if (!visit.sources || visit.sources.length === 0) {
+        throw new Error('No sources found for this visit')
+      }
 
       const response = await fetch('/api/extract-facts', {
         method: 'POST',
@@ -231,7 +241,7 @@ export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
         },
         body: JSON.stringify({
           visitId,
-          sources,
+          sources: visit.sources,
         }),
       })
 
@@ -242,10 +252,7 @@ export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
       const result = await response.json()
       setExtraction(result)
       
-      // Analyze the completeness of the extraction
-      analyzeDataCompleteness(result)
-      
-      // Analyze the completeness of the extraction
+      // Analyze the completeness
       analyzeDataCompleteness(result)
 
       toast({
@@ -267,7 +274,7 @@ export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
     }
   }
 
-  const handleFieldChange = (fieldPath: string, value: any) => {
+  const handleFieldChange = async (fieldPath: string, value: any) => {
     if (!extraction) return
 
     const newExtraction = { ...extraction }
@@ -285,6 +292,23 @@ export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
     
     // Re-analyze completeness after edits
     analyzeDataCompleteness(newExtraction)
+
+    // Save changes to database
+    try {
+      const userId = 'demo-user'; // This should come from the session
+      await VisitService.updateVisitFromExtraction(visitId, userId, newExtraction);
+      toast({
+        title: 'Updated',
+        description: 'Medical information has been updated.',
+      })
+    } catch (error) {
+      console.error('Database update error:', error)
+      toast({
+        title: 'Update Error',
+        description: 'Failed to save changes to database.',
+        variant: 'destructive',
+      })
+    }
   }
 
   const analyzeDataCompleteness = (data: ExtractionData) => {
@@ -348,11 +372,20 @@ export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
     setAnalysisStatus(missing.length > 0 || flags.length > 0 ? 'partial' : 'complete')
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (extraction) {
-      // Store the edited extraction in session storage for the note generation step
-      sessionStorage.setItem(`extraction_${visitId}`, JSON.stringify(extraction))
-      onNext()
+      // Save the edited extraction to the database
+      try {
+        await VisitService.updateVisit(visitId, userId, { extraction })
+        onNext()
+      } catch (error) {
+        console.error('Error saving extraction:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to save extraction data.',
+          variant: 'destructive'
+        })
+      }
     }
   }
 
@@ -389,9 +422,9 @@ export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
       <Card>
         <CardContent className="p-6">
           <div className="text-center">
-            <p className="text-gray-600 mb-4">No extraction data available.</p>
-            <Button onClick={extractFacts}>
-              Extract Information
+            <p className="text-gray-600 mb-4">No analysis has been performed yet.</p>
+            <Button onClick={extractFacts} size="lg">
+              Start Medical Analysis
             </Button>
           </div>
         </CardContent>
@@ -445,39 +478,6 @@ export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
                 Start Medical Analysis
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
-      {/* Analysis Status Alert */}
-      {analysisStatus === 'partial' && (
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardHeader>
-            <CardTitle className="text-yellow-800">⚠️ Analysis Incomplete</CardTitle>
-            <CardDescription className="text-yellow-700">
-              Some information appears to be missing or requires additional details for a complete assessment.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {missingFields.length > 0 && (
-              <div className="mb-4">
-                <h4 className="font-medium text-yellow-800 mb-2">Missing Information:</h4>
-                <ul className="list-disc list-inside space-y-1">
-                  {missingFields.map((item, index) => (
-                    <li key={index} className="text-yellow-700 text-sm">{item}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {redFlags.length > 0 && (
-              <div>
-                <h4 className="font-medium text-red-800 mb-2">🚨 Red Flags Detected:</h4>
-                <ul className="list-disc list-inside space-y-1">
-                  {redFlags.map((flag, index) => (
-                    <li key={index} className="text-red-700 text-sm">{flag}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
@@ -641,13 +641,13 @@ export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
             label="Assessment Candidates"
             value={extraction.assessmentCandidates}
             onChange={(value) => handleFieldChange('assessmentCandidates', value)}
-            type="object"
+            type="array"
           />
           <EditableField
             label="Plan Candidates"
             value={extraction.planCandidates}
             onChange={(value) => handleFieldChange('planCandidates', value)}
-            type="object"
+            type="array"
           />
         </CardContent>
       </Card>

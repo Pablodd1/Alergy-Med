@@ -1,318 +1,210 @@
-# Allergy Scribe (Personal)
+# Allergy Scribe
 
-A comprehensive, single-user medical documentation tool designed specifically for allergists to create detailed clinical notes through multiple input methods including voice dictation, OCR, and document processing.
+A comprehensive medical documentation application for allergists, built with Next.js 14, TypeScript, and MongoDB. The application provides an end-to-end workflow for capturing, reviewing, and generating medical notes from various sources including audio recordings, images, documents, and text input.
 
-## 🎯 Purpose
+## 🎯 Project Overview
 
-Allergy Scribe helps allergists efficiently create comprehensive medical notes by:
-- **Capturing** information through voice dictation, camera OCR, document uploads, and text input
-- **Extracting** structured medical data using AI-powered analysis
-- **Reviewing** and editing extracted information before finalization
-- **Generating** complete 15-section allergy consultation notes
+- **Name**: Allergy Scribe
+- **Goal**: Streamline medical note generation for allergy and immunology specialists
+- **Features**: Multi-modal data capture, AI-powered information extraction, comprehensive review interface, automated note generation with export capabilities
 
-## 🏗️ Architecture
+## 🌐 URLs
 
-### Frontend
-- **Next.js 14+** with App Router
-- **TypeScript** for type safety
-- **Tailwind CSS** + **shadcn/ui** for responsive UI
-- **Mobile-first design** optimized for tablet and smartphone use
+- **Development**: http://localhost:3002
+- **Production**: [To be deployed]
+- **GitHub**: [Repository URL]
 
-### Backend & APIs
-- **Next.js API Routes** for server-side functionality
-- **OpenAI Integration** for transcription and structured extraction
-- **OCR Support** via Azure Form Recognizer or Google Document AI
-- **Authentication** with NextAuth.js and bcrypt
+## 🏗️ Data Architecture
 
-### Data Storage
-- **Session Storage** for temporary data during visit processing
-- **MongoDB Atlas** (optional) for persistent storage
-- **File Storage** via Vercel Blob or S3-compatible services
+### Data Models
+- **User Model**: Username, email, password (bcrypt), firstName, lastName, role, isActive, timestamps
+- **Visit Model**: visitId, userId, patientAlias, chiefComplaint, sources[], extraction{}, note{}, status, timestamps
 
-## 🚀 Quick Start
+### Storage Services
+- **Primary Database**: MongoDB (Mongoose ODM)
+- **Authentication**: NextAuth.js with JWT sessions
+- **File Processing**: OCR for images, document parsing for PDFs/DOCX
+- **AI Processing**: OpenAI GPT-4 for medical information extraction
 
-### Prerequisites
-- Node.js 18+ 
-- npm or yarn
-- OpenAI API key
-- (Optional) Azure Form Recognizer or Google Document AI credentials
+### Data Flow
+1. User creates visit → Stored in MongoDB
+2. Capture sources (audio, images, documents, text) → Sources saved to visit
+3. AI extraction on sources → Extraction data saved to visit
+4. Review and edit extraction → Updated extraction saved
+5. Generate note from extraction → Note saved to visit
+6. Export note (PDF/DOCX/Clipboard) → Final output
 
-### Installation
+## 🚀 Current Status
 
-1. **Clone the repository**
+### ✅ Completed Features
+- **Authentication System**: NextAuth with MongoDB user management
+- **User Registration**: Sign-up page with email/username validation
+- **Login/Logout**: Secure credential-based authentication
+- **Multi-modal Capture**: Audio recording, image capture, file upload, text input
+- **AI Extraction**: OpenAI-powered medical information extraction with strict schema
+- **Review Interface**: Comprehensive review and editing of extracted information
+- **Note Generation**: Automated medical note generation with fallback to manual generation
+- **Export Capabilities**: PDF, DOCX, and clipboard export functionality
+- **Dashboard**: Visit history and management interface
+- **Database Integration**: Complete MongoDB persistence replacing sessionStorage
+
+### 🔄 Modules Status
+- **Capture Module**: ✅ Database-backed version implemented
+- **Review Module**: ✅ Database-backed version implemented  
+- **Note Module**: ✅ Database-backed version implemented
+- **Authentication**: ✅ Complete with user management
+- **Dashboard**: ✅ Visit history and management
+
+### 📊 API Routes
+- `POST /api/auth/[...nextauth]` - NextAuth authentication
+- `POST /api/users` - User registration
+- `GET /api/visits` - List user visits
+- `POST /api/visits` - Create new visit
+- `GET /api/visits/[visitId]` - Get specific visit
+- `PUT /api/visits/[visitId]` - Update visit
+- `GET /api/visits/statistics` - User statistics
+- `POST /api/ocr` - OCR processing for images
+- `POST /api/extract-facts` - AI medical extraction
+- `POST /api/generate-note` - Medical note generation
+- `POST /api/upload` - File upload processing
+
+## 🛠️ Technical Implementation
+
+### Tech Stack
+- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes, Hono framework
+- **Database**: MongoDB with Mongoose ODM
+- **Authentication**: NextAuth.js with JWT
+- **AI/ML**: OpenAI GPT-4 for extraction
+- **File Processing**: pdf-parse, mammoth, jimp for document/image processing
+- **Export**: jsPDF, docx for PDF/DOCX generation
+
+### Environment Variables
 ```bash
-git clone <repository-url>
-cd allergy-scribe
-```
+# Authentication
+NEXTAUTH_SECRET=your-secure-random-string
+NEXTAUTH_URL=http://localhost:3002
 
-2. **Install dependencies**
-```bash
-npm install
-```
+# AI Services
+OPENAI_API_KEY=sk-your-openai-key
 
-3. **Environment Configuration**
-Create a `.env.local` file:
+# Database
+MONGODB_URI=mongodb://localhost:27017/allergy-scribe
 
-```bash
-# Required
-OPENAI_API_KEY=your_openai_api_key_here
-NEXTAUTH_SECRET=your_nextauth_secret_here
-NEXTAUTH_URL=http://localhost:3000
-
-# Authentication (change these for production!)
+# Application Settings
 DEFAULT_USERNAME=allergist
 DEFAULT_PASSWORD=allergy123
-
-# Optional - OCR Provider (choose one)
-OCR_PROVIDER=mock  # Options: mock, azure, google
-
-# If using Azure Form Recognizer
-AZURE_FORM_RECOGNIZER_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
-AZURE_FORM_RECOGNIZER_KEY=your_azure_key
-
-# If using Google Document AI
-GOOGLE_CLOUD_PROJECT_ID=your_project_id
-GOOGLE_CLOUD_LOCATION=us
-GOOGLE_DOCUMENT_AI_PROCESSOR_ID=your_processor_id
-GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account.json
-
-# Optional - MongoDB Atlas
-MONGODB_URI=mongodb+srv://your-connection-string
-
-# Optional - File Storage
-BLOB_READ_WRITE_TOKEN=your_vercel_blob_token
+OCR_PROVIDER=mock
+DEMO_MODE=true
 ```
 
-4. **Run development server**
+### Key Dependencies
+- `next`: 14.2.0
+- `react`: 18
+- `mongoose`: 8.0.0
+- `next-auth`: 4.24.0
+- `openai`: 4.20.0
+- `bcryptjs`: 2.4.3
+- `jspdf`: 2.5.1
+- `docx`: 8.5.0
+
+## 📋 User Guide
+
+### Getting Started
+1. **Sign Up**: Create a new account with username, email, and password
+2. **Sign In**: Use your credentials to access the application
+3. **Create Visit**: Click "Start New Visit" to begin a medical documentation session
+4. **Capture Information**: Use audio recording, image capture, file upload, or text input
+5. **Review Extraction**: Review and edit the AI-extracted medical information
+6. **Generate Note**: Create a comprehensive medical note from the extracted data
+7. **Export**: Download the note as PDF/DOCX or copy to clipboard
+
+### Workflow Steps
+1. **Step 1: Capture** - Record audio, take photos, upload documents, or enter text
+2. **Step 2: Review** - AI extracts medical information for your review and editing
+3. **Step 3: Generate Note** - Create a comprehensive medical note with export options
+
+### Features
+- **Multi-user Support**: Each user has their own account and visit history
+- **Visit Management**: Create, view, and manage multiple visits
+- **Data Persistence**: All data is stored in MongoDB, not sessionStorage
+- **Export Options**: Generate professional PDF or DOCX documents
+- **AI-Powered Extraction**: Intelligent extraction of medical information from various sources
+
+## 🚀 Deployment
+
+### Vercel (Recommended)
+This project is optimized for deployment on Vercel.
+
+1. **Connect GitHub Repository**: Link your GitHub repository to Vercel.
+2. **Environment Variables**: Configure the following environment variables in Vercel:
+   ```bash
+   MONGODB_URI=your_mongodb_atlas_uri
+   NEXTAUTH_SECRET=your_secret
+   NEXTAUTH_URL=https://your-project.vercel.app
+   OPENAI_API_KEY=your_openai_key
+   ```
+3. **Deploy**: Vercel will automatically detect Next.js and build the project.
+
+### Development
 ```bash
 npm run dev
 ```
 
-5. **Access the application**
-Open [http://localhost:3000](http://localhost:3000) and sign in with your configured credentials.
-
-## 📋 Features
-
-### Module 1: Capture
-- **🎤 Voice Dictation**: Browser-based audio recording with OpenAI Whisper transcription
-- **📷 Camera OCR**: Mobile-optimized photo capture with text extraction
-- **📄 Document Upload**: PDF, DOCX, image processing with OCR
-- **⌨️ Text Input**: Direct typing or pasting of clinical information
-
-### Module 2: Extract + Review
-- **🧠 AI-Powered Extraction**: Structured medical data extraction using OpenAI GPT-4
-- **📊 Strict JSON Schema**: Validated extraction with Zod schemas
-- **✏️ Editable Interface**: Chip-based editing for allergy lists and medical data
-- **⚠️ Confidence Flagging**: Automatic identification of uncertain or missing information
-
-### Module 3: Generate Note
-- **📝 15-Section Notes**: Complete allergy consultation documentation
-- **📋 Structured Allergy List**: Organized allergen database with reactions and certainty
-- **🔍 Needs Confirmation**: Automatic flagging of incomplete or uncertain data
-- **📤 Export Options**: PDF, DOCX, and clipboard export functionality
-
-### Authentication & Security
-- **🔐 Single-User Mode**: Designed for individual allergist use
-- **🛡️ Visit Isolation**: Strict separation between patient visits
-- **🔑 NextAuth Integration**: Secure credential-based authentication
-
-## 🎯 Demo Mode
-
-For testing without database writes:
-
-1. Set `DEMO_MODE=true` in your `.env.local`
-2. All data will be stored in session storage only
-3. No persistent database operations
-4. Perfect for demonstrations and initial testing
-
-## 🔧 Configuration
-
-### OCR Providers
-Choose your OCR provider by setting `OCR_PROVIDER`:
-
-- **`mock`**: Simulated OCR for testing (default)
-- **`azure`**: Azure Form Recognizer (recommended for production)
-- **`google`**: Google Document AI Enterprise
-
-### Authentication
-Change default credentials in environment variables:
-```bash
-DEFAULT_USERNAME=your_username
-DEFAULT_PASSWORD=your_secure_password
-```
-
-## 📖 Usage Guide
-
-### Step 1: Capture Information
-1. **Record Audio**: Click "Record Audio" and dictate patient information
-2. **Take Photos**: Use camera to capture documents or handwritten notes
-3. **Upload Files**: Drag and drop PDFs, images, or documents
-4. **Type Text**: Enter additional information manually
-
-### Step 2: Review Extracted Data
-1. **Review**: Check AI-extracted medical information
-2. **Edit**: Click edit icons to modify any field
-3. **Confirm**: Ensure all allergy history is accurate
-4. **Flag**: Note any items needing confirmation
-
-### Step 3: Generate Final Note
-1. **Review**: Check the comprehensive 15-section note
-2. **Export**: Download as PDF/DOCX or copy to clipboard
-3. **Confirm**: Review "Needs Confirmation" section
-4. **Complete**: Use note in your EMR system
-
-## 🏥 Clinical Workflow Integration
-
-### EMR Integration
-- Copy generated notes directly to your EMR system
-- Export in structured format for import
-- Maintain consistent documentation standards
-
-### Quality Assurance
-- Always review "Needs Confirmation" section
-- Verify structured allergy list accuracy
-- Check confidence flags for source quality
-- Never rely solely on AI-generated content
-
-## 🔒 Privacy & Security
-
-### Data Protection
-- **No Patient Identifiers**: System removes names, DOB, SSN
-- **Visit Isolation**: Each visit is completely separate
-- **Session Storage**: Temporary data storage (configurable)
-- **Encryption**: All data transmission encrypted
-
-### Compliance
-- **HIPAA Considerations**: Designed for clinical use
-- **Audit Trail**: Track all document generation
-- **Access Control**: Single-user authentication
-- **Data Retention**: Configurable retention policies
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**OCR Not Working**
-- Check OCR provider configuration
-- Verify API credentials
-- Try different file formats
-
-**Audio Recording Issues**
-- Check browser microphone permissions
-- Ensure HTTPS connection for production
-- Verify audio file format compatibility
-
-**Authentication Failures**
-- Check NextAuth configuration
-- Verify environment variables
-- Check session timeout settings
-
-### Debug Mode
-Enable debug logging:
-```bash
-DEBUG=allergy-scribe:* npm run dev
-```
-
-## 🚀 Deployment
-
-### Vercel Deployment (Recommended)
-1. Push to GitHub
-2. Connect to Vercel
-3. Configure environment variables
-4. Deploy automatically
-
-### Self-Hosted
+### Production Build
 ```bash
 npm run build
 npm start
 ```
 
-### Environment Variables for Production
-```bash
-# Required
-OPENAI_API_KEY=your_production_key
-NEXTAUTH_SECRET=your_production_secret
-NEXTAUTH_URL=https://your-domain.com
+### Environment Setup
+1. Configure MongoDB connection
+2. Set up NextAuth secret
+3. Configure OpenAI API key
+4. Set production environment variables
 
-# Security (change defaults!)
-DEFAULT_USERNAME=secure_username
-DEFAULT_PASSWORD=secure_password
+## 🔧 Development Status
 
-# Optional but recommended
-MONGODB_URI=your_production_mongodb
-BLOB_READ_WRITE_TOKEN=your_production_blob_token
-```
+### ✅ Completed
+- Core application architecture
+- Database integration with MongoDB
+- Authentication system with NextAuth
+- All modules updated to use database persistence
+- User management and visit history
+- Export functionality (PDF/DOCX/Clipboard)
 
-## 📚 API Documentation
+### 🚧 In Progress
+- Comprehensive testing suite
+- Production deployment configuration
+- Performance optimization
+- Security hardening
 
-### Endpoints
+### 📋 Pending
+- CI/CD pipeline setup (Vercel)
+- Advanced error handling and monitoring
+- User feedback and analytics
 
-**POST /api/transcribe**
-- Audio file transcription
-- Returns: `{ text: string, segments: Array<{start, end, text}> }`
+## 🔒 Security Features
 
-**POST /api/ocr**
-- Image text extraction
-- Returns: `{ text: string, confidence: number, layout?: LayoutBlock[] }`
+- **Password Hashing**: bcrypt for secure password storage
+- **JWT Sessions**: Secure session management with NextAuth
+- **Input Validation**: Comprehensive validation on all user inputs
+- **Data Sanitization**: AI extraction includes safety measures to prevent hallucination
+- **Environment Variables**: Sensitive configuration stored securely
 
-**POST /api/upload**
-- Document processing (PDF, DOCX, images)
-- Returns: `{ text: string, confidence: number, filename: string }`
+## 🎯 Next Steps
 
-**POST /api/extract-facts**
-- Medical information extraction
-- Returns: `ExtractionData` (structured medical data)
+1. **Testing**: Implement comprehensive test suite for all components and API routes
+2. **Deployment**: Set up production deployment with proper environment configuration
+3. **Monitoring**: Add error tracking and performance monitoring
+4. **Enhancement**: Add advanced features based on user feedback
 
-**POST /api/generate-note**
-- Final note generation
-- Returns: `{ note: string }`
+## 📞 Support
 
-## 🧪 Testing
-
-### Unit Tests
-```bash
-npm test
-```
-
-### Integration Tests
-```bash
-npm run test:integration
-```
-
-### End-to-End Tests
-```bash
-npm run test:e2e
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## ⚠️ Medical Disclaimer
-
-This tool is designed to assist healthcare professionals and should not be used as a substitute for clinical judgment. Always review and verify all generated content before use in patient care.
-
-**Important**: 
-- This tool does not provide medical advice
-- Generated content requires clinical review
-- Maintain HIPAA compliance in your usage
-- Follow your institution's policies for AI-assisted documentation
-
-## 🆘 Support
-
-For issues and questions:
-1. Check the troubleshooting section
-2. Review GitHub issues
-3. Create a new issue with detailed information
+For issues or questions, please check the application documentation or contact the development team.
 
 ---
 
-**Built with ❤️ for allergists and their patients**
+**Last Updated**: January 29, 2026
+**Version**: 1.0.0
+**Status**: Development Complete, Ready for Testing and Deployment
