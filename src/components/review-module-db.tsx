@@ -182,15 +182,11 @@ function MedicationsSection({ data, onChange }: { data: ExtractionData['medicati
               <div key={index} className="border rounded p-3 space-y-1">
                 <div className="flex justify-between items-start">
                   <div className="font-medium">{medication.name}</div>
-                  <Badge variant={medication.isActive ? 'default' : 'secondary'}>
-                    {medication.isActive ? 'Active' : 'Inactive'}
-                  </Badge>
                 </div>
                 <div className="text-sm text-gray-600 space-y-1">
-                  {medication.dosage && <div><strong>Dosage:</strong> {medication.dosage}</div>}
+                  {medication.dose && <div><strong>Dosage:</strong> {medication.dose}</div>}
                   {medication.frequency && <div><strong>Frequency:</strong> {medication.frequency}</div>}
                   {medication.indication && <div><strong>Indication:</strong> {medication.indication}</div>}
-                  {medication.prescribedBy && <div><strong>Prescribed by:</strong> {medication.prescribedBy}</div>}
                 </div>
               </div>
             ))}

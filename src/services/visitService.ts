@@ -108,56 +108,89 @@ export class VisitService {
 
   static async updateVisitFromExtraction(visitId: string, userId: string, extraction: ExtractionData): Promise<IVisit | null> {
     const conn = await connectToDatabase();
-    
-    if (!conn) {
-      const visit = await MockVisitService.findByVisitId(visitId, userId);
-      if (!visit) return null;
-      
-      const updateData: UpdateVisitInput = {
-        patientAlias: extraction.patientAlias,
-        chiefComplaint: extraction.chiefComplaint,
-        hpi: extraction.hpi,
-        allergyHistory: extraction.allergyHistory,
-        medications: extraction.medications,
-        pmh: extraction.pmh,
-        psh: extraction.psh,
-        fh: extraction.fh,
-        sh: extraction.sh,
-        ros: extraction.ros,
-        exam: extraction.exam,
-        testsAndLabs: extraction.testsAndLabs,
-        assessmentCandidates: extraction.assessmentCandidates,
-        planCandidates: extraction.planCandidates,
-        needsConfirmation: extraction.needsConfirmation,
-        sourceQualityFlags: extraction.sourceQualityFlags,
-        atopicComorbidities: extraction.atopicComorbidities,
-      extraction: extraction
-      };
-      
-      return MockVisitService.updateVisit(visitId, userId, updateData);
-    }
-    
+
+    // Transform ExtractionData to UpdateVisitInput format
+    const transformAllergy = (a: any) => ({
+      allergen: a.allergen,
+      reaction: a.reaction || undefined,
+      severity: a.severity || undefined,
+      timing: a.timing || undefined,
+      dateOrAge: a.dateOrAge || undefined,
+      treatmentUsed: a.treatmentUsed || undefined,
+      certainty: a.certainty || undefined
+    });
+
     const updateData: UpdateVisitInput = {
-      patientAlias: extraction.patientAlias,
-      chiefComplaint: extraction.chiefComplaint,
-      hpi: extraction.hpi,
-      allergyHistory: extraction.allergyHistory,
-      medications: extraction.medications,
+      patientAlias: extraction.patientAlias || undefined,
+      chiefComplaint: extraction.chiefComplaint || undefined,
+      hpi: extraction.hpi ? {
+        onset: extraction.hpi.onset || undefined,
+        timeline: extraction.hpi.timeline || undefined,
+        frequency: extraction.hpi.frequency || undefined,
+        severity: extraction.hpi.severity || undefined,
+        triggers: extraction.hpi.triggers,
+        relievers: extraction.hpi.relievers,
+        exposures: extraction.hpi.exposures,
+        environment: extraction.hpi.environment,
+        foodContext: extraction.hpi.foodContext,
+        medicationContext: extraction.hpi.medicationContext
+      } : undefined,
+      allergyHistory: extraction.allergyHistory ? {
+        food: extraction.allergyHistory.food.map(transformAllergy),
+        environmental: extraction.allergyHistory.environmental.map(a => ({
+          allergen: a.allergen,
+          reaction: a.reaction || undefined,
+          seasonality: a.seasonality || undefined,
+          certainty: a.certainty || undefined
+        })),
+        stingingInsects: extraction.allergyHistory.stingingInsects.map(transformAllergy),
+        latexOther: extraction.allergyHistory.latexOther.map(transformAllergy)
+      } : undefined,
+      medications: extraction.medications.map(m => ({
+        name: m.name,
+        dosage: m.dose || undefined,
+        frequency: m.frequency || undefined,
+        indication: m.indication || undefined,
+        isActive: true,
+        response: m.response || undefined,
+        sideEffects: m.adverseEffects || undefined
+      })),
       pmh: extraction.pmh,
       psh: extraction.psh,
       fh: extraction.fh,
       sh: extraction.sh,
-      ros: extraction.ros,
-      exam: extraction.exam,
-      testsAndLabs: extraction.testsAndLabs,
-      assessmentCandidates: extraction.assessmentCandidates,
-      planCandidates: extraction.planCandidates,
-      needsConfirmation: extraction.needsConfirmation,
-      sourceQualityFlags: extraction.sourceQualityFlags,
-      atopicComorbidities: extraction.atopicComorbidities,
+      // Map ROS: Join all positives into 'constitutional' as a fallback, or just skip if too complex to map without more logic
+      ros: extraction.ros ? {
+        constitutional: extraction.ros.positives.join(', '),
+        // We put negatives in notes or ignore for now as IVisit doesn't have a clear place for general negatives list
+      } : undefined,
+      exam: extraction.exam ? {
+        general: extraction.exam.join(', ')
+      } : undefined,
+      // Map basic tests if possible, otherwise empty
+      testsAndLabs: [], 
+      assessmentCandidates: extraction.assessmentCandidates.map(a => a.problem),
+      planCandidates: extraction.planCandidates.map(p => p.item),
+      needsConfirmation: extraction.needsConfirmation ? {
+        items: extraction.needsConfirmation
+      } : undefined,
+      sourceQualityFlags: extraction.sourceQualityFlags ? {
+        sourceQualityFlags: extraction.sourceQualityFlags.join(', ')
+      } : undefined,
+      atopicComorbidities: extraction.atopicComorbidities ? {
+        eczema: extraction.atopicComorbidities.eczema === 'yes',
+        asthma: extraction.atopicComorbidities.asthma === 'yes',
+        allergicRhinitis: extraction.atopicComorbidities.chronicRhinitis === 'yes',
+        foodAllergy: false, 
+        drugAllergy: false
+      } : undefined,
       extraction: extraction
     };
-
+    
+    if (!conn) {
+      return MockVisitService.updateVisitByVisitId(visitId, userId, updateData);
+    }
+    
     return Visit.findOneAndUpdate(
       { visitId, userId },
       { $set: updateData },
@@ -226,7 +259,7 @@ export class VisitService {
         }
       },
       { new: true }
-  );
+    );
   }
 
   static async searchVisits(userId: string, query: string, page = 1, limit = 20): Promise<{ visits: IVisit[]; total: number }> {

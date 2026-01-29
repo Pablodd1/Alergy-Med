@@ -60,17 +60,17 @@ export class MockVisitService {
     return visits.get(id) || null;
   }
 
-  static async findByVisitId(visitId: string): Promise<IVisit | null> {
-    return Array.from(visits.values()).find(v => v.visitId === visitId) || null;
+  static async findByVisitId(visitId: string, userId?: string): Promise<IVisit | null> {
+    return Array.from(visits.values()).find(v => v.visitId === visitId && (!userId || v.userId === userId)) || null;
   }
 
   static async findByUserId(userId: string): Promise<IVisit[]> {
     return Array.from(visits.values()).filter(v => v.userId === userId);
   }
 
-  static async updateVisit(id: string, updates: Partial<IVisit>): Promise<IVisit | null> {
+  static async updateVisit(id: string, userId: string, updates: Partial<IVisit>): Promise<IVisit | null> {
     const visit = visits.get(id);
-    if (!visit) return null;
+    if (!visit || visit.userId !== userId) return null;
 
     Object.assign(visit, updates, { updatedAt: new Date() });
     visits.set(id, visit);
@@ -89,8 +89,13 @@ export class MockVisitService {
     return visits.delete(id);
   }
 
-  static async listVisits(userId: string, page = 1, limit = 20): Promise<{ visits: IVisit[]; total: number }> {
-    const userVisits = Array.from(visits.values()).filter(v => v.userId === userId);
+  static async listVisits(userId: string, page = 1, limit = 20, status?: string): Promise<{ visits: IVisit[]; total: number }> {
+    let userVisits = Array.from(visits.values()).filter(v => v.userId === userId);
+    
+    if (status) {
+      userVisits = userVisits.filter(v => v.status === status);
+    }
+    
     const start = (page - 1) * limit;
     const end = start + limit;
     return {

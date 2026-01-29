@@ -150,12 +150,22 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
     }
     
     // Allergy History
-    if (data.allergyHistory && data.allergyHistory.length > 0) {
-      note += `ALLERGY HISTORY:\n`
-      data.allergyHistory.forEach((allergy: any) => {
-        note += `- ${allergy.allergen}: ${allergy.reaction || 'Unknown reaction'} (${allergy.severity || 'Unknown severity'})\n`
-      })
-      note += '\n'
+    if (data.allergyHistory) {
+      const allAllergies = [
+        ...(data.allergyHistory.food || []),
+        ...(data.allergyHistory.drug || []),
+        ...(data.allergyHistory.environmental || []),
+        ...(data.allergyHistory.stingingInsects || []),
+        ...(data.allergyHistory.latexOther || [])
+      ];
+
+      if (allAllergies.length > 0) {
+        note += `ALLERGY HISTORY:\n`
+        allAllergies.forEach((allergy: any) => {
+          note += `- ${allergy.allergen}: ${allergy.reaction || 'Unknown reaction'} (${allergy.severity || 'Unknown severity'})\n`
+        })
+        note += '\n'
+      }
     }
     
     // Current Medications
@@ -422,8 +432,14 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
               <div>
                 <h4 className="font-semibold mb-2">Key Findings</h4>
                 <div className="space-y-1">
-                  {extraction.allergyHistory && extraction.allergyHistory.length > 0 && (
-                    <Badge variant="outline" className="mr-1">{extraction.allergyHistory.length} Allergies</Badge>
+                  {extraction.allergyHistory && (
+                    <Badge variant="outline" className="mr-1">
+                      {(extraction.allergyHistory.food?.length || 0) +
+                       (extraction.allergyHistory.drug?.length || 0) +
+                       (extraction.allergyHistory.environmental?.length || 0) +
+                       (extraction.allergyHistory.stingingInsects?.length || 0) +
+                       (extraction.allergyHistory.latexOther?.length || 0)} Allergies
+                    </Badge>
                   )}
                   {extraction.medications && extraction.medications.length > 0 && (
                     <Badge variant="outline" className="mr-1">{extraction.medications.length} Medications</Badge>
