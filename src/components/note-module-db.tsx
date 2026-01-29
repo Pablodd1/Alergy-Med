@@ -46,10 +46,10 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
 
       if (visit.extraction) {
         setExtraction(visit.extraction)
-        if (!visit.note) {
+        if (!visit.generatedNote) {
           generateNote(visit.extraction)
         } else {
-          setNote(visit.note)
+          setNote(visit.generatedNote)
         }
       } else {
         toast({
@@ -91,7 +91,7 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
       setNote(result.note)
       
       // Save the generated note to the database
-      await VisitService.updateVisit(visitId, userId, { note: result.note })
+      await VisitService.updateVisit(visitId, userId, { generatedNote: result.note })
 
       toast({
         title: 'Note Generated',
@@ -111,7 +111,7 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
       setNote(fallbackNote)
       
       // Save the fallback note
-      await VisitService.updateVisit(visitId, userId, { note: fallbackNote })
+      await VisitService.updateVisit(visitId, userId, { generatedNote: fallbackNote })
     } finally {
       setIsGenerating(false)
     }
