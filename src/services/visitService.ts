@@ -46,6 +46,7 @@ export interface UpdateVisitInput {
   sources?: IVisit['sources'];
   generatedNote?: string;
   status?: 'draft' | 'completed' | 'archived';
+  extraction?: any;
   completedAt?: Date;
 }
 
@@ -129,7 +130,8 @@ export class VisitService {
         planCandidates: extraction.planCandidates,
         needsConfirmation: extraction.needsConfirmation,
         sourceQualityFlags: extraction.sourceQualityFlags,
-        atopicComorbidities: extraction.atopicComorbidities
+        atopicComorbidities: extraction.atopicComorbidities,
+      extraction: extraction
       };
       
       return MockVisitService.updateVisit(visitId, userId, updateData);
@@ -152,7 +154,8 @@ export class VisitService {
       planCandidates: extraction.planCandidates,
       needsConfirmation: extraction.needsConfirmation,
       sourceQualityFlags: extraction.sourceQualityFlags,
-      atopicComorbidities: extraction.atopicComorbidities
+      atopicComorbidities: extraction.atopicComorbidities,
+      extraction: extraction
     };
 
     return Visit.findOneAndUpdate(

@@ -281,6 +281,7 @@ export interface IVisit extends Document {
     };
   }>;
   generatedNote?: string;
+  extraction?: any;
   status: 'draft' | 'completed' | 'archived';
   createdAt: Date;
   updatedAt: Date;
@@ -350,6 +351,7 @@ const visitSchema = new Schema<IVisit>({
     }
   }],
   generatedNote: { type: String },
+  extraction: { type: Schema.Types.Mixed },
   status: {
     type: String,
     enum: ['draft', 'completed', 'archived'],
