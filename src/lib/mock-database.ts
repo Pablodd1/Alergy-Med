@@ -1,7 +1,7 @@
 import { IVisit } from '@/models/Visit';
 
 // Simple user interface for mock database (without Mongoose Document methods)
-interface IMockUser {
+export interface IMockUser {
   _id: string;
   username: string;
   password: string;
@@ -16,37 +16,42 @@ interface IMockUser {
 }
 
 // Simple in-memory storage for development/demo purposes
-const users = new Map<string, IMockUser>();
-const visits = new Map<string, IVisit>();
-
 export class MockDatabase {
+  static users = new Map<string, IMockUser>();
+  static visits = new Map<string, IVisit>();
+
   static async connect(): Promise<void> {
     // Mock connection - no-op for now
     console.log('Connected to mock database');
+
+    // Ensure default user exists
+    if (!MockDatabase.users.has('demo-user-id')) {
+      MockDatabase.users.set('demo-user-id', defaultUser);
+    }
   }
 
   static async saveUser(user: IMockUser): Promise<void> {
-    users.set(user._id, user);
+    MockDatabase.users.set(user._id, user);
   }
 
   static async getUser(id: string): Promise<IMockUser | null> {
-    return users.get(id) || null;
+    return MockDatabase.users.get(id) || null;
   }
 
   static async getUserByUsername(username: string): Promise<IMockUser | null> {
-    return Array.from(users.values()).find(u => u.username === username) || null;
+    return Array.from(MockDatabase.users.values()).find(u => u.username === username) || null;
   }
 
   static async saveVisit(visit: IVisit): Promise<void> {
-    visits.set(visit._id.toString(), visit);
+    MockDatabase.visits.set(visit._id.toString(), visit);
   }
 
   static async getVisit(id: string): Promise<IVisit | null> {
-    return visits.get(id) || null;
+    return MockDatabase.visits.get(id) || null;
   }
 
   static async getVisitsByUserId(userId: string): Promise<IVisit[]> {
-    return Array.from(visits.values()).filter(v => v.userId === userId);
+    return Array.from(MockDatabase.visits.values()).filter(v => v.userId === userId);
   }
 }
 
@@ -65,4 +70,4 @@ const defaultUser: IMockUser = {
   comparePassword: async () => true
 };
 
-users.set(defaultUser._id, defaultUser);
+MockDatabase.users.set(defaultUser._id, defaultUser);

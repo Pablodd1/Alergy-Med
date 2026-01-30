@@ -9,7 +9,6 @@ import { NoteModule } from '@/components/note-module-db'
 import { Dashboard } from '@/components/dashboard'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { VisitService } from '@/services/visitService'
 
 export type Step = 'capture' | 'review' | 'note'
 
@@ -47,19 +46,26 @@ export default function Home() {
   // Initialize a new visit when starting capture
   const handleStartCapture = async () => {
     try {
-      const newVisitId = `visit_${Date.now()}`
-      const userId = session.user?.id || 'demo-user'
-      
-      // Create a new visit in the database
-      await VisitService.createVisit({
-        userId,
-        visitId: newVisitId,
-        patientAlias: 'Patient', // Will be updated during extraction
-        chiefComplaint: 'To be determined', // Will be updated during extraction
-        sources: []
+      // Create a new visit via the API
+      const response = await fetch('/api/visits', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          patientAlias: 'Patient',
+          chiefComplaint: 'To be determined',
+          sources: []
+        }),
       })
-      
-      setVisitId(newVisitId)
+
+      if (!response.ok) {
+        throw new Error('Failed to create visit')
+      }
+
+      const { visitId } = await response.json()
+
+      setVisitId(visitId)
       setShowDashboard(false)
       setCurrentStep('capture')
     } catch (error) {
@@ -94,8 +100,8 @@ export default function Home() {
               {visitId && !showDashboard && (
                 <>
                   <span className="text-sm text-gray-500">Visit ID: {visitId}</span>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => setShowDashboard(true)}
                   >
@@ -131,13 +137,12 @@ export default function Home() {
                     {steps.map((step, index) => (
                       <div key={step.id} className="flex items-center">
                         <div
-                          className={`flex items-center justify-center w-10 h-10 rounded-full text-sm font-medium ${
-                            currentStep === step.id
-                              ? 'bg-blue-600 text-white'
-                              : steps.findIndex(s => s.id === currentStep) > index
+                          className={`flex items-center justify-center w-10 h-10 rounded-full text-sm font-medium ${currentStep === step.id
+                            ? 'bg-blue-600 text-white'
+                            : steps.findIndex(s => s.id === currentStep) > index
                               ? 'bg-green-600 text-white'
                               : 'bg-gray-200 text-gray-600'
-                          }`}
+                            }`}
                         >
                           {index + 1}
                         </div>
@@ -158,19 +163,19 @@ export default function Home() {
                   {currentStep === 'capture' && (
                     <CaptureModule visitId={visitId} userId={session.user?.id || 'demo-user'} onNext={() => setCurrentStep('review')} />
                   )}
-                  
+
                   {currentStep === 'review' && (
-                    <ReviewModule 
-                      visitId={visitId} 
+                    <ReviewModule
+                      visitId={visitId}
                       userId={session.user?.id || 'demo-user'}
                       onBack={() => setCurrentStep('capture')}
                       onNext={() => setCurrentStep('note')}
                     />
                   )}
-                  
+
                   {currentStep === 'note' && (
-                    <NoteModule 
-                      visitId={visitId} 
+                    <NoteModule
+                      visitId={visitId}
                       userId={session.user?.id || 'demo-user'}
                       onBack={() => setCurrentStep('review')}
                     />

@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
 import { Mic, Camera, Upload, Type, Play, Square, Trash2, Eye, EyeOff, ArrowRight } from 'lucide-react'
-import { VisitService } from '@/services/visitService'
 
 interface CaptureSource {
   id: string
@@ -32,11 +31,11 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
   const [recordingTime, setRecordingTime] = useState(0)
   const [textInput, setTextInput] = useState('')
   const [showPreview, setShowPreview] = useState(false)
-  
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  
+
   const { toast } = useToast()
 
   // Audio recording functions
@@ -46,18 +45,18 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
       const mediaRecorder = new MediaRecorder(stream)
       mediaRecorderRef.current = mediaRecorder
       audioChunksRef.current = []
-      
+
       mediaRecorder.ondataavailable = (event) => {
         audioChunksRef.current.push(event.data)
       }
-      
+
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' })
         const reader = new FileReader()
-        
+
         reader.onloadend = async () => {
           const base64Data = reader.result as string
-          
+
           try {
             const response = await fetch('/api/transcribe', {
               method: 'POST',
@@ -69,13 +68,13 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
                 visitId
               })
             })
-            
+
             if (!response.ok) {
               throw new Error('Transcription failed')
             }
-            
+
             const result = await response.json()
-            
+
             const newSource: CaptureSource = {
               id: Date.now().toString(),
               type: 'audio',
@@ -85,14 +84,14 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
                 segments: result.segments
               }
             }
-            
+
             setSources(prev => [...prev, newSource])
-            
+
             toast({
               title: 'Audio Transcribed',
               description: `Transcribed ${result.transcription.length} characters`
             })
-            
+
           } catch (error) {
             toast({
               title: 'Transcription Error',
@@ -101,19 +100,19 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
             })
           }
         }
-        
+
         reader.readAsDataURL(audioBlob)
         stream.getTracks().forEach(track => track.stop())
       }
-      
+
       mediaRecorder.start()
       setIsRecording(true)
       setRecordingTime(0)
-      
+
       recordingIntervalRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1)
       }, 1000)
-      
+
     } catch (error) {
       toast({
         title: 'Recording Error',
@@ -122,45 +121,45 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
       })
     }
   }
-  
+
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop()
       setIsRecording(false)
-      
+
       if (recordingIntervalRef.current) {
         clearInterval(recordingIntervalRef.current)
       }
     }
   }
-  
+
   // Camera capture
   const captureFromCamera = () => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'image/*'
     input.capture = 'environment'
-    
+
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (!file) return
-      
+
       try {
         const formData = new FormData()
         formData.append('file', file)
         formData.append('visitId', visitId)
-        
+
         const response = await fetch('/api/ocr', {
           method: 'POST',
           body: formData
         })
-        
+
         if (!response.ok) {
           throw new Error('OCR processing failed')
         }
-        
+
         const result = await response.json()
-        
+
         const newSource: CaptureSource = {
           id: Date.now().toString(),
           type: 'image',
@@ -171,14 +170,14 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
             confidence: result.confidence
           }
         }
-        
+
         setSources(prev => [...prev, newSource])
-        
+
         toast({
           title: 'Image Processed',
           description: `Extracted ${result.text.length} characters from image`
         })
-        
+
       } catch (error) {
         toast({
           title: 'Processing Error',
@@ -187,37 +186,37 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
         })
       }
     }
-    
+
     input.click()
   }
-  
+
   // File upload
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
     if (!files) return
-    
+
     Array.from(files).forEach(async (file) => {
       await processFile(file)
     })
   }
-  
+
   const processFile = async (file: File) => {
     try {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('visitId', visitId)
-      
+
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData
       })
-      
+
       if (!response.ok) {
         throw new Error('File processing failed')
       }
-      
+
       const result = await response.json()
-      
+
       const newSource: CaptureSource = {
         id: Date.now().toString(),
         type: 'document',
@@ -228,14 +227,14 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
           confidence: result.confidence
         }
       }
-      
+
       setSources(prev => [...prev, newSource])
-      
+
       toast({
         title: 'Document Processed',
         description: `Extracted ${result.text.length} characters from ${file.name}`
       })
-      
+
     } catch (error) {
       toast({
         title: 'Processing Error',
@@ -244,7 +243,7 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
       })
     }
   }
-  
+
   // Text input
   const addTextInput = () => {
     if (textInput.trim()) {
@@ -256,21 +255,21 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
           timestamp: new Date().toISOString()
         }
       }
-      
+
       setSources(prev => [...prev, newSource])
       setTextInput('')
-      
+
       toast({
         title: 'Text Added',
         description: `Added ${textInput.length} characters`
       })
     }
   }
-  
+
   const removeSource = (id: string) => {
     setSources(prev => prev.filter(source => source.id !== id))
   }
-  
+
   const startAnalysis = async () => {
     if (sources.length === 0) {
       toast({
@@ -280,19 +279,26 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
       })
       return
     }
-    
+
     try {
       // Update the visit in database with sources
-      const updatedVisit = await VisitService.updateVisit(visitId, userId, { sources });
-      if (!updatedVisit) {
+      const response = await fetch(`/api/visits/${visitId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sources }),
+      });
+
+      if (!response.ok) {
         throw new Error('Failed to update visit with sources');
       }
-      
+
       toast({
         title: 'Analysis Started',
         description: 'Analyzing medical information...'
       })
-      
+
       // Proceed to review step where extraction will happen automatically
       onNext()
     } catch (error) {
@@ -364,12 +370,12 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
                 </>
               )}
             </Button>
-            
+
             <Button onClick={captureFromCamera} className="h-16 text-sm">
               <Camera className="mr-2 h-5 w-5" />
               Take Photo
             </Button>
-            
+
             <Button
               onClick={() => document.getElementById('file-upload')?.click()}
               className="h-16 text-sm"
@@ -377,7 +383,7 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
               <Upload className="mr-2 h-5 w-5" />
               Upload Files
             </Button>
-            
+
             <Button
               onClick={() => setShowPreview(!showPreview)}
               variant="outline"
@@ -396,7 +402,7 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
               )}
             </Button>
           </div>
-          
+
           <input
             id="file-upload"
             type="file"
@@ -405,7 +411,7 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
             onChange={handleFileUpload}
             className="hidden"
           />
-          
+
           <div className="space-y-2">
             <Textarea
               placeholder="Or type/paste text here..."
@@ -457,7 +463,7 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
                 ))}
               </div>
             )}
-            
+
             <div className="flex justify-between items-center">
               <Button
                 onClick={() => setSources([])}
@@ -467,7 +473,7 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
                 <Trash2 className="mr-2 h-4 w-4" />
                 Clear All
               </Button>
-              
+
               <Button onClick={startAnalysis} disabled={sources.length === 0}>
                 Start Analysis
                 <ArrowRight className="ml-2 h-4 w-4" />

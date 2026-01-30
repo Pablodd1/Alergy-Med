@@ -37,7 +37,7 @@ export interface UpdateUserInput {
 export class UserService {
   static async createUser(input: CreateUserInput): Promise<IUser | IMockUser> {
     const conn = await connectToDatabase();
-    
+
     if (!conn) {
       // Use mock database
       const existingUser = await MockDatabase.getUserByUsername(input.username);
@@ -62,7 +62,7 @@ export class UserService {
       await MockDatabase.saveUser(mockUser);
       return mockUser;
     }
-    
+
     // Use real MongoDB
     const existingUser = await User.findOne({ username: input.username });
     if (existingUser) {
@@ -83,62 +83,62 @@ export class UserService {
 
   static async findByUsername(username: string): Promise<IUser | IMockUser | null> {
     const conn = await connectToDatabase();
-    
+
     if (!conn) {
       return MockDatabase.getUserByUsername(username);
     }
-    
+
     return User.findOne({ username });
   }
 
   static async findById(id: string): Promise<IUser | IMockUser | null> {
     const conn = await connectToDatabase();
-    
+
     if (!conn) {
       return MockDatabase.getUser(id);
     }
-    
+
     return User.findById(id);
   }
 
   static async updateUser(id: string, updates: UpdateUserInput): Promise<IUser | IMockUser | null> {
     const conn = await connectToDatabase();
-    
+
     if (!conn) {
       const user = await MockDatabase.getUser(id);
       if (!user) return null;
-      
+
       Object.assign(user, updates, { updatedAt: new Date() });
       await MockDatabase.saveUser(user);
       return user;
     }
-    
+
     return User.findByIdAndUpdate(id, updates, { new: true });
   }
 
   static async deleteUser(id: string): Promise<boolean> {
     const conn = await connectToDatabase();
-    
+
     if (!conn) {
       const user = await MockDatabase.getUser(id);
       return !!user;
     }
-    
+
     const result = await User.findByIdAndDelete(id);
     return !!result;
   }
 
   static async listUsers(page = 1, limit = 20): Promise<{ users: (IUser | IMockUser)[]; total: number }> {
     const conn = await connectToDatabase();
-    
+
     if (!conn) {
       // Mock implementation - return all users
-      const allUsers = Array.from((MockDatabase as any).users.values?.() || []) as IMockUser[];
+      const allUsers = Array.from(MockDatabase.users.values()) as IMockUser[];
       const start = (page - 1) * limit;
       const end = start + limit;
       return { users: allUsers.slice(start, end), total: allUsers.length };
     }
-    
+
     const skip = (page - 1) * limit;
     const [users, total] = await Promise.all([
       User.find({}).skip(skip).limit(limit).sort({ createdAt: -1 }),

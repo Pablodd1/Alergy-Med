@@ -10,7 +10,6 @@ import { ArrowLeft, Copy, Download, FileText, RefreshCw } from 'lucide-react'
 import { extractionSchema, ExtractionData } from '@/types/schemas'
 import { jsPDF } from 'jspdf'
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx'
-import { VisitService } from '@/services/visitService'
 
 interface NoteModuleProps {
   visitId: string
@@ -39,10 +38,11 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
 
   const loadExtractionData = async () => {
     try {
-      const visit = await VisitService.findByVisitId(visitId, userId)
-      if (!visit) {
+      const response = await fetch(`/api/visits/${visitId}`)
+      if (!response.ok) {
         throw new Error('Visit not found')
       }
+      const visit = await response.json()
 
       if (visit.extraction) {
         setExtraction(visit.extraction)
@@ -89,9 +89,15 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
 
       const result = await response.json()
       setNote(result.note)
-      
+
       // Save the generated note to the database
-      await VisitService.updateVisit(visitId, userId, { generatedNote: result.note })
+      await fetch(`/api/visits/${visitId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ generatedNote: result.note }),
+      });
 
       toast({
         title: 'Note Generated',
@@ -105,13 +111,19 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
         description: 'Failed to generate medical note. Please try again.',
         variant: 'destructive'
       })
-      
+
       // Fallback to manual note generation
       const fallbackNote = generateNoteFromExtraction(extractionData)
       setNote(fallbackNote)
-      
+
       // Save the fallback note
-      await VisitService.updateVisit(visitId, userId, { generatedNote: fallbackNote })
+      await fetch(`/api/visits/${visitId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ generatedNote: fallbackNote }),
+      });
     } finally {
       setIsGenerating(false)
     }
@@ -119,7 +131,7 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
 
   const generateNoteFromExtraction = (data: ExtractionData): string => {
     let note = `MEDICAL NOTE\n===========\n\n`
-    
+
     // Patient Information
     if (data.patientAlias) {
       note += `Patient: ${data.patientAlias}\n`
@@ -131,12 +143,12 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
       note += `Setting: ${data.visitContext.setting}\n`
     }
     note += '\n'
-    
+
     // Chief Complaint
     if (data.chiefComplaint) {
       note += `CHIEF COMPLAINT:\n${data.chiefComplaint}\n\n`
     }
-    
+
     // History of Present Illness
     if (data.hpi) {
       note += `HISTORY OF PRESENT ILLNESS:\n`
@@ -148,7 +160,7 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
       if (data.hpi.relievers) note += `Relievers: ${data.hpi.relievers}\n`
       note += '\n'
     }
-    
+
     // Allergy History
     if (data.allergyHistory) {
       const allAllergies = [
@@ -167,7 +179,7 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
         note += '\n'
       }
     }
-    
+
     // Current Medications
     if (data.medications && data.medications.length > 0) {
       note += `CURRENT MEDICATIONS:\n`
@@ -176,7 +188,7 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
       })
       note += '\n'
     }
-    
+
     // Assessment and Plan
     if (data.assessmentCandidates && data.assessmentCandidates.length > 0) {
       note += `ASSESSMENT:\n`
@@ -185,7 +197,7 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
       })
       note += '\n'
     }
-    
+
     if (data.planCandidates && data.planCandidates.length > 0) {
       note += `PLAN:\n`
       data.planCandidates.forEach((plan: any) => {
@@ -193,7 +205,7 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
       })
       note += '\n'
     }
-    
+
     // Needs Confirmation
     if (data.needsConfirmation && data.needsConfirmation.length > 0) {
       note += `NEEDS CONFIRMATION:\n`
@@ -202,7 +214,7 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
       })
       note += '\n'
     }
-    
+
     return note
   }
 
@@ -240,34 +252,34 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
           doc.addPage()
           yPosition = 20
         }
-        
+
         let text = line
         let fontSize = 12
         let fontStyle = 'normal'
-        
+
         // Formatting
         if (line.startsWith('MEDICAL NOTE')) {
           fontSize = 16
           fontStyle = 'bold'
-        } else if (line.startsWith('CHIEF COMPLAINT') || line.startsWith('HISTORY') || 
-                   line.startsWith('ALLERGY') || line.startsWith('CURRENT') ||
-                   line.startsWith('ASSESSMENT') || line.startsWith('PLAN') ||
-                   line.startsWith('NEEDS CONFIRMATION')) {
+        } else if (line.startsWith('CHIEF COMPLAINT') || line.startsWith('HISTORY') ||
+          line.startsWith('ALLERGY') || line.startsWith('CURRENT') ||
+          line.startsWith('ASSESSMENT') || line.startsWith('PLAN') ||
+          line.startsWith('NEEDS CONFIRMATION')) {
           fontSize = 14
           fontStyle = 'bold'
         }
-        
+
         doc.setFontSize(fontSize)
         if (fontStyle === 'bold') {
           doc.setFont('helvetica', 'bold')
         } else {
           doc.setFont('helvetica', 'normal')
         }
-        
+
         doc.text(text, margin, yPosition)
         yPosition += lineHeight
       })
-      
+
       doc.save(`medical-note-${visitId}.pdf`)
       toast({
         title: 'Downloaded',
@@ -296,10 +308,10 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
             }),
             new Paragraph(''),
             ...note.split('\n').map(line => {
-              if (line.startsWith('CHIEF COMPLAINT') || line.startsWith('HISTORY') || 
-                  line.startsWith('ALLERGY') || line.startsWith('CURRENT') ||
-                  line.startsWith('ASSESSMENT') || line.startsWith('PLAN') ||
-                  line.startsWith('NEEDS CONFIRMATION')) {
+              if (line.startsWith('CHIEF COMPLAINT') || line.startsWith('HISTORY') ||
+                line.startsWith('ALLERGY') || line.startsWith('CURRENT') ||
+                line.startsWith('ASSESSMENT') || line.startsWith('PLAN') ||
+                line.startsWith('NEEDS CONFIRMATION')) {
                 return new Paragraph({
                   text: line,
                   heading: HeadingLevel.HEADING_2,
@@ -321,7 +333,7 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
       link.download = `medical-note-${visitId}.docx`
       link.click()
       URL.revokeObjectURL(url)
-      
+
       toast({
         title: 'Downloaded',
         description: 'Note downloaded as DOCX',
@@ -435,10 +447,10 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
                   {extraction.allergyHistory && (
                     <Badge variant="outline" className="mr-1">
                       {(extraction.allergyHistory.food?.length || 0) +
-                       (extraction.allergyHistory.drug?.length || 0) +
-                       (extraction.allergyHistory.environmental?.length || 0) +
-                       (extraction.allergyHistory.stingingInsects?.length || 0) +
-                       (extraction.allergyHistory.latexOther?.length || 0)} Allergies
+                        (extraction.allergyHistory.drug?.length || 0) +
+                        (extraction.allergyHistory.environmental?.length || 0) +
+                        (extraction.allergyHistory.stingingInsects?.length || 0) +
+                        (extraction.allergyHistory.latexOther?.length || 0)} Allergies
                     </Badge>
                   )}
                   {extraction.medications && extraction.medications.length > 0 && (

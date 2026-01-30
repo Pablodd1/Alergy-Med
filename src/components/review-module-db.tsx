@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/use-toast'
 import { ArrowLeft, ArrowRight, Edit3, Save, X } from 'lucide-react'
 import { extractionSchema, ExtractionData } from '@/types/schemas'
-import { VisitService } from '@/services/visitService'
 
 interface ReviewModuleProps {
   visitId: string
@@ -206,7 +205,7 @@ export function ReviewModule({ visitId, userId, onBack, onNext }: ReviewModulePr
   const [analysisStatus, setAnalysisStatus] = useState<'analyzing' | 'complete' | 'partial' | 'error'>('analyzing')
   const [missingFields, setMissingFields] = useState<string[]>([])
   const [redFlags, setRedFlags] = useState<string[]>([])
-  
+
   const { toast } = useToast()
 
   useEffect(() => {
@@ -219,11 +218,12 @@ export function ReviewModule({ visitId, userId, onBack, onNext }: ReviewModulePr
       setError(null)
       setAnalysisStatus('analyzing')
 
-      // Get the visit from database
-      const visit = await VisitService.findByVisitId(visitId, userId);
-      if (!visit) {
-        throw new Error('Visit not found in database')
+      // Get the visit via API
+      const visitResponse = await fetch(`/api/visits/${visitId}`)
+      if (!visitResponse.ok) {
+        throw new Error('Visit not found')
       }
+      const visit = await visitResponse.json()
 
       // Check if sources exist
       if (!visit.sources || visit.sources.length === 0) {
@@ -247,7 +247,7 @@ export function ReviewModule({ visitId, userId, onBack, onNext }: ReviewModulePr
 
       const result = await response.json()
       setExtraction(result)
-      
+
       // Analyze the completeness
       analyzeDataCompleteness(result)
 
@@ -285,14 +285,24 @@ export function ReviewModule({ visitId, userId, onBack, onNext }: ReviewModulePr
     // Set the new value
     current[pathParts[pathParts.length - 1]] = value
     setExtraction(newExtraction)
-    
+
     // Re-analyze completeness after edits
     analyzeDataCompleteness(newExtraction)
 
     // Save changes to database
     try {
-      const userId = 'demo-user'; // This should come from the session
-      await VisitService.updateVisitFromExtraction(visitId, userId, newExtraction);
+      const response = await fetch(`/api/visits/${visitId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ extraction: newExtraction }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update visit');
+      }
+
       toast({
         title: 'Updated',
         description: 'Medical information has been updated.',
@@ -347,16 +357,16 @@ export function ReviewModule({ visitId, userId, onBack, onNext }: ReviewModulePr
       flags.push('⚠️ Severe allergic reaction reported')
     }
 
-    if (data.hpi?.triggers && data.hpi.triggers.some((t: string) => 
-      ['anaphylaxis', 'severe reaction', 'hospitalization', 'epinephrine'].some(keyword => 
+    if (data.hpi?.triggers && data.hpi.triggers.some((t: string) =>
+      ['anaphylaxis', 'severe reaction', 'hospitalization', 'epinephrine'].some(keyword =>
         t.toLowerCase().includes(keyword)
       )
     )) {
       flags.push('🚨 History of severe allergic reactions requiring medical intervention')
     }
 
-    if (data.exam?.some((e: string) => 
-      ['wheezing', 'stridor', 'hypotension', 'tachycardia'].some(keyword => 
+    if (data.exam?.some((e: string) =>
+      ['wheezing', 'stridor', 'hypotension', 'tachycardia'].some(keyword =>
         e.toLowerCase().includes(keyword)
       )
     )) {
@@ -372,7 +382,18 @@ export function ReviewModule({ visitId, userId, onBack, onNext }: ReviewModulePr
     if (extraction) {
       // Save the edited extraction to the database
       try {
-        await VisitService.updateVisit(visitId, userId, { extraction })
+        const response = await fetch(`/api/visits/${visitId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ extraction }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save extraction');
+        }
+
         onNext()
       } catch (error) {
         console.error('Error saving extraction:', error)
@@ -675,7 +696,7 @@ export function ReviewModule({ visitId, userId, onBack, onNext }: ReviewModulePr
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Capture
         </Button>
-        
+
         <Button onClick={handleNext} disabled={!extraction}>
           Generate Medical Note
           <ArrowRight className="ml-2 h-4 w-4" />

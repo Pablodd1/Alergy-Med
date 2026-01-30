@@ -14,7 +14,7 @@ export async function GET(
     }
 
     const visit = await VisitService.findByVisitId(params.visitId, session.user.id)
-    
+
     if (!visit) {
       return NextResponse.json({ error: 'Visit not found' }, { status: 404 })
     }
@@ -40,8 +40,15 @@ export async function PUT(
     }
 
     const updates = await request.json()
-    const visit = await VisitService.updateVisit(params.visitId, session.user.id, updates)
-    
+    let visit;
+
+    // If the update contains an extraction field, use the specialized extraction update method
+    if (updates.extraction && !updates.manualUpdate) {
+      visit = await VisitService.updateVisitFromExtraction(params.visitId, session.user.id, updates.extraction)
+    } else {
+      visit = await VisitService.updateVisit(params.visitId, session.user.id, updates)
+    }
+
     if (!visit) {
       return NextResponse.json({ error: 'Visit not found' }, { status: 404 })
     }
@@ -67,7 +74,7 @@ export async function DELETE(
     }
 
     const success = await VisitService.deleteVisit(params.visitId, session.user.id)
-    
+
     if (!success) {
       return NextResponse.json({ error: 'Visit not found' }, { status: 404 })
     }

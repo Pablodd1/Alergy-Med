@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { ToastProvider } from '@/components/ui/toast'
+import { ToastProvider } from '@/components/ui/use-toast'
 import { SessionProvider } from '@/components/providers/session-provider'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
@@ -19,7 +19,9 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  console.log('Fetching session in RootLayout')
   const session = await getServerSession(authOptions)
+  console.log('Session fetch result:', session ? 'User logged in' : 'No session')
 
   return (
     <html lang="en">

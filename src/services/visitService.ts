@@ -56,11 +56,11 @@ export interface UpdateVisitInput {
 export class VisitService {
   static async createVisit(input: CreateVisitInput): Promise<VisitType> {
     const conn = await connectToDatabase();
-    
+
     if (!conn) {
       return MockVisitService.createVisit(input);
     }
-    
+
     const existingVisit = await Visit.findOne({ visitId: input.visitId });
     if (existingVisit) {
       throw new Error('Visit ID already exists');
@@ -77,33 +77,33 @@ export class VisitService {
 
   static async findByVisitId(visitId: string, userId: string): Promise<VisitType | null> {
     const conn = await connectToDatabase();
-    
+
     if (!conn) {
       return MockVisitService.findByVisitId(visitId, userId);
     }
-    
+
     return Visit.findOne({ visitId, userId });
   }
 
   static async findById(id: string, userId: string): Promise<VisitType | null> {
     const conn = await connectToDatabase();
-    
+
     if (!conn) {
       return MockVisitService.findById(id);
     }
-    
+
     return Visit.findOne({ _id: id, userId });
   }
 
-  static async updateVisit(id: string, userId: string, updates: UpdateVisitInput): Promise<VisitType | null> {
+  static async updateVisit(visitId: string, userId: string, updates: UpdateVisitInput): Promise<VisitType | null> {
     const conn = await connectToDatabase();
-    
+
     if (!conn) {
-      return MockVisitService.updateVisit(id, userId, updates);
+      return MockVisitService.updateVisit(visitId, userId, updates);
     }
-    
+
     return Visit.findOneAndUpdate(
-      { _id: id, userId },
+      { visitId, userId },
       { $set: updates },
       { new: true }
     );
@@ -171,7 +171,7 @@ export class VisitService {
         general: extraction.exam.join(', ')
       } : undefined,
       // Map basic tests if possible, otherwise empty
-      testsAndLabs: [], 
+      testsAndLabs: [],
       assessmentCandidates: extraction.assessmentCandidates.map(a => a.problem),
       planCandidates: extraction.planCandidates.map(p => p.item),
       needsConfirmation: extraction.needsConfirmation ? {
@@ -184,16 +184,16 @@ export class VisitService {
         eczema: extraction.atopicComorbidities.eczema === 'yes',
         asthma: extraction.atopicComorbidities.asthma === 'yes',
         allergicRhinitis: extraction.atopicComorbidities.chronicRhinitis === 'yes',
-        foodAllergy: false, 
+        foodAllergy: false,
         drugAllergy: false
       } : undefined,
       extraction: extraction
     };
-    
+
     if (!conn) {
       return MockVisitService.updateVisitByVisitId(visitId, userId, updateData);
     }
-    
+
     return Visit.findOneAndUpdate(
       { visitId, userId },
       { $set: updateData },
@@ -201,27 +201,27 @@ export class VisitService {
     );
   }
 
-  static async deleteVisit(id: string, userId: string): Promise<boolean> {
+  static async deleteVisit(visitId: string, userId: string): Promise<boolean> {
     const conn = await connectToDatabase();
-    
+
     if (!conn) {
-      return MockVisitService.deleteVisit(id);
+      return MockVisitService.deleteVisit(visitId);
     }
-    
-    const result = await Visit.findOneAndDelete({ _id: id, userId });
+
+    const result = await Visit.findOneAndDelete({ visitId, userId });
     return !!result;
   }
 
   static async listVisits(userId: string, page = 1, limit = 20, status?: string): Promise<{ visits: VisitType[]; total: number }> {
     const conn = await connectToDatabase();
-    
+
     if (!conn) {
       return MockVisitService.listVisits(userId, page, limit, status);
     }
-    
+
     const skip = (page - 1) * limit;
     const filter: any = { userId };
-    
+
     if (status) {
       filter.status = status;
     }
@@ -240,22 +240,22 @@ export class VisitService {
 
   static async completeVisit(visitId: string, userId: string, generatedNote: string): Promise<VisitType | null> {
     const conn = await connectToDatabase();
-    
+
     if (!conn) {
       const visit = await MockVisitService.findByVisitId(visitId, userId);
       if (!visit) return null;
-      
+
       return MockVisitService.updateVisit(visitId, userId, {
         status: 'completed',
         generatedNote,
         completedAt: new Date()
       });
     }
-    
+
     return Visit.findOneAndUpdate(
       { visitId, userId },
-      { 
-        $set: { 
+      {
+        $set: {
           status: 'completed',
           generatedNote,
           completedAt: new Date()
@@ -267,16 +267,16 @@ export class VisitService {
 
   static async searchVisits(userId: string, query: string, page = 1, limit = 20): Promise<{ visits: VisitType[]; total: number }> {
     const conn = await connectToDatabase();
-    
+
     if (!conn) {
       // Simple mock search implementation
       const userVisits = await MockVisitService.listVisits(userId, 1, 1000);
       const searchRegex = new RegExp(query, 'i');
-      const filtered = userVisits.visits.filter(visit => 
+      const filtered = userVisits.visits.filter(visit =>
         visit.patientAlias?.match(searchRegex) ||
         visit.chiefComplaint?.match(searchRegex)
       );
-      
+
       const start = (page - 1) * limit;
       const end = start + limit;
       return {
@@ -284,7 +284,7 @@ export class VisitService {
         total: filtered.length
       };
     }
-    
+
     const skip = (page - 1) * limit;
     const searchRegex = new RegExp(query, 'i');
 
@@ -320,13 +320,13 @@ export class VisitService {
     recentVisits: VisitType[];
   }> {
     const conn = await connectToDatabase();
-    
+
     if (!conn) {
       const userVisits = await MockVisitService.listVisits(userId, 1, 1000);
       const completed = userVisits.visits.filter(v => v.status === 'completed');
       const draft = userVisits.visits.filter(v => v.status === 'draft');
       const archived = userVisits.visits.filter(v => v.status === 'archived');
-      
+
       return {
         totalVisits: userVisits.total,
         completedVisits: completed.length,
