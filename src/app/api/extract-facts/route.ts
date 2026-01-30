@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { extractionSchema, ExtractionData } from '@/types/schemas'
 import { zodToJsonSchema } from 'zod-to-json-schema'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
 import { VisitService } from '@/services/visitService'
 
 const getOpenAIClient = () => {
@@ -14,153 +12,82 @@ const getOpenAIClient = () => {
   return new OpenAI({ apiKey });
 }
 
-const extractionPrompt = `You are an expert medical AI assistant specializing in allergy and immunology. Your task is to extract structured medical information from clinical notes, patient interviews, and medical documents related to allergy patients.
+// ============================================================================
+// ALLERGIST & INTERNAL MEDICINE CLINICAL EXTRACTION PROMPT
+// Production-Grade Medical AI for SOAP Notes, CPT/ICD-10 Coding, & Decision Support
+// ============================================================================
 
-CRITICAL RULES:
-1. NEVER fabricate data that is not explicitly mentioned in the source text
-2. If information is unclear, incomplete, or missing, indicate this with "unclear", "unknown", or include it in the "needsConfirmation" field
-3. Always include "Needs confirmation / missing data" and "Confidence flags" in your analysis
-4. Use clinical reasoning language - avoid definitive statements when data is incomplete
-5. Maintain strict patient visit isolation - only extract information from the provided sources
+const extractionPrompt = `You are an expert board-certified allergist and immunologist with 25+ years of clinical experience. You are creating comprehensive medical documentation from patient records, transcriptions, and clinical notes.
 
-EXTRACTION REQUIREMENTS:
-- Extract all relevant allergy history including food, drug, environmental, stinging insects, and latex/other
-- Identify atopic comorbidities (asthma, eczema, chronic rhinitis, sinusitis, urticaria/angioedema)
-- Extract current medications with doses, frequency, indications, and responses
-- Note any relevant past medical, surgical, family, and social history
-- Extract review of systems findings
-- Identify any relevant physical exam findings
-- Extract test results and laboratory data
-- Generate assessment candidates based on the evidence
-- Create plan candidates with appropriate rationale
+**YOUR ROLE:**
+You are assisting allergists, internal medicine providers, and medical assistants in creating complete, accurate, third-person medical documentation ready for EHR entry.
 
-JSON OUTPUT SCHEMA:
-Your response must be valid JSON matching this exact schema:
+**CRITICAL CLINICAL RULES:**
+1. NEVER fabricate information not explicitly stated in the source documents
+2. Use professional third-person medical documentation language (e.g., "The patient reports..." not "I have...")
+3. Apply clinical reasoning to identify red flags, missing information, and recommended testing
+4. Extract ALL relevant CPT codes for procedures documented
+5. Extract ALL relevant ICD-10 diagnosis codes with supporting evidence
+6. Identify clinical decision support opportunities
+7. Flag any information that needs confirmation from the patient or provider
+8. Maintain strict HIPAA compliance - use patient aliases, never real names
 
-{
-  "patientAlias": "Patient identifier or initials",
-  "visitContext": {
-    "date": "Visit date if mentioned",
-    "setting": "self|clinic|televisit"
-  },
-  "chiefComplaint": "Primary reason for visit",
-  "hpi": {
-    "onset": "When symptoms started",
-    "timeline": "Progression of symptoms",
-    "frequency": "How often symptoms occur",
-    "severity": "Severity description",
-    "triggers": ["list of triggers"],
-    "relievers": ["list of relievers"],
-    "exposures": ["list of exposures"],
-    "environment": ["environmental factors"],
-    "foodContext": ["food-related context"],
-    "medicationContext": ["medication-related context"]
-  },
-  "allergyHistory": {
-    "food": [
-      {
-        "allergen": "Name of food",
-        "reaction": "Type of reaction",
-        "severity": "mild|moderate|severe|unknown",
-        "timing": "immediate|delayed|unknown",
-        "dateOrAge": "When it occurred",
-        "treatmentUsed": "Treatment if mentioned",
-        "certainty": "confirmed|reported|unclear"
-      }
-    ],
-    "drug": ["same structure as food allergies"],
-    "environmental": [
-      {
-        "allergen": "Environmental allergen",
-        "reaction": "Reaction description",
-        "seasonality": "Seasonal pattern if any",
-        "certainty": "confirmed|reported|unclear"
-      }
-    ],
-    "stingingInsects": ["same structure as food allergies"],
-    "latexOther": ["same structure as food allergies"]
-  },
-  "atopicComorbidities": {
-    "asthma": "yes|no|unknown",
-    "eczema": "yes|no|unknown",
-    "chronicRhinitis": "yes|no|unknown",
-    "sinusitis": "yes|no|unknown",
-    "urticariaAngioedema": "yes|no|unknown"
-  },
-  "medications": [
-    {
-      "name": "Medication name",
-      "dose": "Dosage if mentioned",
-      "frequency": "Frequency if mentioned",
-      "indication": "Reason for medication",
-      "response": "Patient response",
-      "adverseEffects": "Any side effects"
-    }
-  ],
-  "pmh": ["Past medical history items"],
-  "psh": ["Past surgical history items"],
-  "fh": ["Family history items"],
-  "sh": ["Social history items"],
-  "ros": {
-    "positives": ["Positive review of systems"],
-    "negatives": ["Negative review of systems"]
-  },
-  "exam": ["Physical exam findings"],
-  "testsAndLabs": {
-    "allergyTesting": [
-      {
-        "type": "SPT|sIgE|component|patch|challenge|other",
-        "date": "Test date",
-        "keyFindings": "Key findings",
-        "allergensPositive": ["Positive allergens"],
-        "allergensNegative": ["Negative allergens"],
-        "confidence": "high|medium|low"
-      }
-    ],
-    "labs": [
-      {
-        "panel": "Lab panel name",
-        "date": "Lab date",
-        "abnormalFindings": ["Abnormal findings"],
-        "notableNormals": ["Notable normal findings"],
-        "confidence": "high|medium|low"
-      }
-    ],
-    "imagingOrOther": [
-      {
-        "type": "Type of test",
-        "date": "Test date",
-        "finding": "Key finding",
-        "confidence": "high|medium|low"
-      }
-    ]
-  },
-  "assessmentCandidates": [
-    {
-      "problem": "Potential diagnosis/problem",
-      "supportingEvidence": ["Evidence supporting this assessment"],
-      "confidence": "high|medium|low"
-    }
-  ],
-  "planCandidates": [
-    {
-      "item": "Plan item",
-      "rationale": "Rationale for this plan",
-      "priority": "high|medium|low"
-    }
-  ],
-  "needsConfirmation": ["List of items that need confirmation"],
-  "sourceQualityFlags": ["Quality flags for source material"]
-}
+**SOAP NOTE STRUCTURE:**
+Generate content organized into SOAP format:
+- **S (Subjective)**: Chief complaint, HPI, allergies, medications, ROS, social/family history
+- **O (Objective)**: Vital signs, physical exam findings, test results, lab values
+- **A (Assessment)**: Diagnoses with ICD-10 codes, clinical reasoning, differentials
+- **P (Plan)**: Treatments, diagnostic orders, patient education, follow-up, referrals
 
-IMPORTANT:
-- Use null for missing objects, empty arrays for missing lists
-- Be conservative in assessments - indicate uncertainty when appropriate
-- Include confidence levels based on source clarity
-- Flag any OCR or transcription errors
-- Never include patient identifiers (names, DOB, etc.) in extracted data
+**CPT CODE EXTRACTION GUIDELINES:**
+Extract CPT codes based on documented procedures and services:
+- 99201-99215: Office visits (new/established, complexity levels)
+- 95004: Percutaneous allergy skin tests
+- 95024: Intracutaneous allergy tests
+- 95027: Skin endpoint titration
+- 95044: Patch testing
+- 95076-95079: Oral food challenges
+- 95115-95117: Allergen immunotherapy injections
+- 95165: Antigen preparation
+- 94010-94729: Pulmonary function testing
+- 86003-86005: Allergen specific IgE testing
 
-Now extract the medical information from the following sources:`
+**ICD-10 CODE EXTRACTION GUIDELINES:**
+Extract ICD-10 codes for all identified conditions:
+- J30.x: Allergic rhinitis
+- J45.x: Asthma
+- L20.x: Atopic dermatitis
+- L50.x: Urticaria
+- T78.x: Allergic reactions
+- Z88.x: Allergy status codes
+- K52.29: Food allergy
+- L23-L25: Contact dermatitis
+- T63.x: Insect venom allergy
+
+**RED FLAGS TO IDENTIFY:**
+- History of anaphylaxis without epinephrine auto-injector
+- Severe asthma with poor control
+- Drug allergy with continued use of related medications
+- Uncontrolled atopic dermatitis with signs of infection
+- Occupational exposures without protection
+- Immunotherapy candidates not on treatment
+- Missing baseline testing for documented allergies
+
+**MISSING INFORMATION TO FLAG:**
+- Essential allergist testing not performed
+- Incomplete allergy history (timing, severity, treatment)
+- Missing medication list or doses
+- Lack of emergency action plan for severe allergies
+- No documentation of epinephrine training
+- Incomplete family history of atopy
+
+**JSON OUTPUT REQUIREMENTS:**
+Your response MUST be valid JSON matching the provided schema exactly.
+Use null for missing single values, empty arrays [] for missing lists.
+Include confidence levels (high/medium/low) based on source clarity.
+Include ICD-10 and CPT codes extracted from the documentation.
+
+Now analyze and extract comprehensive clinical information from the following medical records:`
 
 export async function POST(request: NextRequest) {
   try {
@@ -168,17 +95,13 @@ export async function POST(request: NextRequest) {
 
     if (!visitId || !sources || !Array.isArray(sources)) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: visitId and sources array required' },
         { status: 400 }
       )
     }
 
-    // Get user from session
-    const session = await getServerSession(authOptions)
-    const userId = session?.user?.id || 'demo-user';
-
-    // Find the visit in database
-    const visit = await VisitService.findByVisitId(visitId, userId);
+    // Find the visit - no authentication required
+    const visit = await VisitService.findByVisitId(visitId);
     if (!visit) {
       return NextResponse.json(
         { error: 'Visit not found' },
@@ -186,24 +109,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Combine all sources into a single text
+    // Combine all sources with clear section markers
     const combinedText = sources
-      .map((source: any) => {
-        let text = source.content || ''
-        if (source.metadata?.filename) {
-          text = `[File: ${source.metadata.filename}]\n${text}`
-        }
-        if (source.metadata?.confidence) {
-          text = `[OCR Confidence: ${Math.round(source.metadata.confidence * 100)}%]\n${text}`
-        }
-        return text
-      })
-      .join('\n\n---\n\n')
+      .map((source: any, index: number) => {
+        let header = `\n=== SOURCE ${index + 1} ===\n`
+        header += `Type: ${source.type?.toUpperCase() || 'UNKNOWN'}\n`
 
-    // Get the JSON schema for the extraction
+        if (source.metadata?.filename) {
+          header += `File: ${source.metadata.filename}\n`
+        }
+        if (source.metadata?.timestamp) {
+          header += `Timestamp: ${source.metadata.timestamp}\n`
+        }
+        header += `---\n`
+
+        return header + (source.content || '')
+      })
+      .join('\n\n')
+
+    // Get the JSON schema for structured output
     const jsonSchema = zodToJsonSchema(extractionSchema)
 
-    // Call OpenAI for extraction
+    // Call GPT-4o for comprehensive extraction
     const openai = getOpenAIClient()
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -214,68 +141,47 @@ export async function POST(request: NextRequest) {
         },
         {
           role: 'user',
-          content: combinedText
+          content: `Analyze the following medical records and extract ALL relevant clinical information for an allergist consultation. Include SOAP structure, CPT codes, ICD-10 codes, red flags, and clinical decision support.\n\n${combinedText}`
         }
       ],
       response_format: {
         type: 'json_schema',
         json_schema: {
-          name: 'medical_extraction',
+          name: 'allergist_clinical_extraction',
           schema: jsonSchema
         }
       },
-      temperature: 0.1, // Low temperature for consistent output
-      max_tokens: 4000
+      temperature: 0.1,
+      max_tokens: 8000
     })
 
     const extractedData = JSON.parse(completion.choices[0].message.content || '{}')
 
-    // Add analysis metadata
+    // Post-processing: Analyze completeness and add metadata
     const analysisMetadata = {
       timestamp: new Date().toISOString(),
       sourcesCount: sources.length,
       analysisStatus: 'complete' as string,
-      missingFields: [] as string[],
-      redFlags: [] as string[]
+      extractedCptCodes: extractedData.cptCodes?.length || 0,
+      extractedIcd10Codes: extractedData.icd10Codes?.length || 0,
+      redFlagsCount: extractedData.redFlags?.length || 0,
+      missingInfoCount: extractedData.missingInformation?.length || 0
     }
 
-    // Analyze completeness
-    if (!extractedData.patientAlias || extractedData.patientAlias.trim() === '') {
-      analysisMetadata.missingFields.push('Patient alias is missing')
+    // Quality checks
+    if (!extractedData.chiefComplaint?.trim()) {
       analysisMetadata.analysisStatus = 'incomplete'
     }
 
-    if (!extractedData.chiefComplaint || extractedData.chiefComplaint.trim() === '') {
-      analysisMetadata.missingFields.push('Chief complaint is missing')
-      analysisMetadata.analysisStatus = 'incomplete'
-    }
-
-    // Check for severe allergies
-    const allAllergies = [
-      ...(extractedData.allergyHistory?.food || []),
-      ...(extractedData.allergyHistory?.drug || []),
-      ...(extractedData.allergyHistory?.environmental || []),
-      ...(extractedData.allergyHistory?.stingingInsects || []),
-      ...(extractedData.allergyHistory?.latexOther || [])
-    ]
-
-    const hasSevereAllergy = allAllergies.some((allergy: any) =>
-      allergy.severity && ['severe', 'life-threatening', 'anaphylaxis'].includes(allergy.severity.toLowerCase())
-    )
-
-    if (hasSevereAllergy) {
-      analysisMetadata.redFlags.push('⚠️ Severe allergic reaction history identified')
-    }
-
-    // Validate the extraction
+    // Validate the extraction against schema
     const validatedData: ExtractionData = extractionSchema.parse(extractedData)
 
-    // Update the visit in database with extracted data
-    const updatedVisit = await VisitService.updateVisitFromExtraction(visitId, userId, validatedData);
+    // Update the visit in database
+    const updatedVisit = await VisitService.updateVisitFromExtraction(visitId, 'anonymous', validatedData);
 
     if (!updatedVisit) {
       return NextResponse.json(
-        { error: 'Failed to update visit with extracted data' },
+        { error: 'Failed to persist extraction to database' },
         { status: 500 }
       )
     }
@@ -286,24 +192,24 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Extraction error:', error)
+    console.error('Clinical extraction error:', error)
 
     if (error instanceof Error && error.message.includes('API key')) {
       return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
+        { error: 'OpenAI API key not configured. Please contact administrator.' },
         { status: 500 }
       )
     }
 
     if (error instanceof Error && error.message.includes('Validation')) {
       return NextResponse.json(
-        { error: 'Failed to validate extracted data', details: error.message },
+        { error: 'Data validation failed', details: error.message },
         { status: 500 }
       )
     }
 
     return NextResponse.json(
-      { error: 'Failed to extract medical information' },
+      { error: 'Failed to extract clinical information. Please try again.' },
       { status: 500 }
     )
   }

@@ -2,88 +2,444 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 221.2 83.2% 53.3%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222.2 84% 4.9%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96%;
-  --accent-foreground: 222.2 84% 4.9%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
-  --radius: 0.5rem;
+/* ============================================================================
+   ALLERGY SCRIBE - CLINICAL DOCUMENTATION THEME
+   Premium Medical-Grade Design System
+   ============================================================================ */
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.75rem;
+
+    /* Clinical Theme Colors */
+    --clinical-blue: 221 83% 53%;
+    --clinical-green: 142 76% 36%;
+    --clinical-red: 0 84% 60%;
+    --clinical-amber: 38 92% 50%;
+    --clinical-purple: 262 83% 58%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
 }
 
-.dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 217.2 91.2% 59.8%;
-  --primary-foreground: 222.2 84% 4.9%;
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 224.3 76.3% 94.1%;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Better focus styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2;
+  }
+
+  /* Custom scrollbar for medical dashboard */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-100 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full hover:bg-slate-400 transition-colors;
+  }
 }
 
-* {
-  border-color: hsl(var(--border));
+@layer components {
+  /* ============================================================================
+     CARD STYLES
+     ============================================================================ */
+
+  .card {
+    @apply rounded-xl border bg-card text-card-foreground shadow-sm transition-all duration-200;
+  }
+
+  .card-clinical {
+    @apply rounded-2xl bg-white/80 backdrop-blur-sm border border-slate-100 shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+
+  .card-urgent {
+    @apply rounded-2xl bg-red-50 border-l-4 border-l-red-500 border border-red-100 shadow-lg;
+  }
+
+  .card-warning {
+    @apply rounded-2xl bg-amber-50 border-l-4 border-l-amber-500 border border-amber-100 shadow-lg;
+  }
+
+  .card-success {
+    @apply rounded-2xl bg-emerald-50 border-l-4 border-l-emerald-500 border border-emerald-100 shadow-lg;
+  }
+
+  /* ============================================================================
+     BUTTON STYLES
+     ============================================================================ */
+
+  .btn-clinical {
+    @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-bold transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed;
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(221 83% 45%) 100%);
+    color: white;
+  }
+
+  .btn-clinical:hover:not(:disabled) {
+    background: linear-gradient(135deg, hsl(221 83% 45%) 0%, hsl(221 83% 40%) 100%);
+  }
+
+  .btn-action {
+    @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-bold transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg disabled:opacity-50;
+    background: linear-gradient(135deg, hsl(var(--clinical-green)) 0%, hsl(142 76% 30%) 100%);
+    color: white;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-bold transition-all duration-200 active:scale-95 shadow-md hover:shadow-lg disabled:opacity-50;
+    background: linear-gradient(135deg, hsl(var(--clinical-red)) 0%, hsl(0 84% 50%) 100%);
+    color: white;
+  }
+
+  /* ============================================================================
+     BADGE STYLES
+     ============================================================================ */
+
+  .badge-clinical {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold transition-colors;
+  }
+
+  .badge-severity-mild {
+    @apply bg-emerald-100 text-emerald-800 border border-emerald-200;
+  }
+
+  .badge-severity-moderate {
+    @apply bg-amber-100 text-amber-800 border border-amber-200;
+  }
+
+  .badge-severity-severe {
+    @apply bg-red-100 text-red-800 border border-red-200;
+  }
+
+  .badge-severity-critical {
+    @apply bg-red-600 text-white border border-red-700 animate-pulse;
+  }
+
+  .badge-code {
+    @apply font-mono bg-slate-100 text-slate-700 px-2 py-1 rounded-lg text-xs;
+  }
+
+  .badge-icd10 {
+    @apply font-mono bg-blue-100 text-blue-800 px-2 py-1 rounded-lg text-xs font-bold;
+  }
+
+  .badge-cpt {
+    @apply font-mono bg-emerald-100 text-emerald-800 px-2 py-1 rounded-lg text-xs font-bold;
+  }
+
+  /* ============================================================================
+     INPUT STYLES
+     ============================================================================ */
+
+  .input-clinical {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base transition-all duration-200;
+    @apply focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none;
+    @apply placeholder:text-slate-400;
+  }
+
+  .textarea-clinical {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base transition-all duration-200 resize-none;
+    @apply focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none;
+    @apply placeholder:text-slate-400;
+  }
+
+  /* ============================================================================
+     SECTION STYLES
+     ============================================================================ */
+
+  .section-header {
+    @apply text-xs font-black text-slate-400 uppercase tracking-widest mb-2;
+  }
+
+  .soap-section {
+    @apply mb-6 pb-4 border-b border-slate-100 last:border-0;
+  }
+
+  .soap-section-title {
+    @apply text-lg font-black text-slate-800 mb-3 flex items-center gap-2;
+  }
+
+  /* ============================================================================
+     ANIMATIONS
+     ============================================================================ */
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes pulse-ring {
+    0% {
+      transform: scale(0.95);
+      opacity: 0.7;
+    }
+
+    50% {
+      transform: scale(1);
+      opacity: 0.3;
+    }
+
+    100% {
+      transform: scale(0.95);
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out forwards;
+  }
+
+  .animate-pulse-ring {
+    animation: pulse-ring 2s ease-in-out infinite;
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  /* ============================================================================
+     RECORDING INDICATOR
+     ============================================================================ */
+
+  .recording-indicator {
+    @apply relative inline-flex h-3 w-3;
+  }
+
+  .recording-indicator::before {
+    @apply absolute inset-0 rounded-full bg-red-500 animate-ping;
+    content: '';
+  }
+
+  .recording-indicator::after {
+    @apply relative inline-flex rounded-full h-3 w-3 bg-red-600;
+    content: '';
+  }
+
+  /* ============================================================================
+     GLASSMORPHISM
+     ============================================================================ */
+
+  .glass {
+    @apply bg-white/70 backdrop-blur-lg border border-white/20;
+  }
+
+  .glass-dark {
+    @apply bg-slate-900/70 backdrop-blur-lg border border-slate-700/50;
+  }
+
+  /* ============================================================================
+     CLINICAL DATA DISPLAY
+     ============================================================================ */
+
+  .data-label {
+    @apply text-xs font-bold text-slate-400 uppercase tracking-wider;
+  }
+
+  .data-value {
+    @apply text-base text-slate-800 font-medium;
+  }
+
+  .data-row {
+    @apply flex items-start justify-between py-2 border-b border-slate-100 last:border-0;
+  }
+
+  /* ============================================================================
+     RED FLAG HIGHLIGHTING
+     ============================================================================ */
+
+  .red-flag {
+    @apply bg-red-50 border-l-4 border-l-red-500 p-4 rounded-r-xl;
+  }
+
+  .warning-flag {
+    @apply bg-amber-50 border-l-4 border-l-amber-500 p-4 rounded-r-xl;
+  }
+
+  .info-flag {
+    @apply bg-blue-50 border-l-4 border-l-blue-500 p-4 rounded-r-xl;
+  }
+
+  /* ============================================================================
+     SOAP NOTE PREVIEW
+     ============================================================================ */
+
+  .soap-note-preview {
+    @apply font-mono text-sm leading-relaxed whitespace-pre-wrap;
+    @apply bg-slate-50 p-6 rounded-xl border border-slate-200;
+  }
+
+  .soap-note-preview h1 {
+    @apply text-lg font-black text-slate-800 mb-2;
+  }
+
+  .soap-note-preview h2 {
+    @apply text-base font-bold text-slate-700 mt-4 mb-2;
+  }
+
+  .soap-note-preview h3 {
+    @apply text-sm font-bold text-slate-600 mt-3 mb-1;
+  }
+
+  /* ============================================================================
+     RESPONSIVE UTILITIES
+     ============================================================================ */
+
+  @media (max-width: 640px) {
+
+    .btn-clinical,
+    .btn-action,
+    .btn-danger {
+      @apply px-4 py-2 text-sm;
+    }
+
+    .card-clinical {
+      @apply rounded-xl;
+    }
+  }
+
+  /* ============================================================================
+     PRINT STYLES
+     ============================================================================ */
+
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+
+    .soap-note-preview {
+      @apply bg-white border-0 p-0;
+    }
+
+    body {
+      @apply text-black bg-white;
+    }
+  }
 }
 
-body {
-  color: hsl(var(--foreground));
-  background: hsl(var(--background));
-}
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
 
-.btn {
-  @apply inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
-}
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 
-.btn-primary {
-  @apply bg-primary text-primary-foreground hover:bg-primary/90;
-}
+  .shadow-clinical {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
+      0 2px 4px -2px rgba(0, 0, 0, 0.05),
+      0 0 0 1px rgba(0, 0, 0, 0.02);
+  }
 
-.btn-secondary {
-  @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
-}
+  .shadow-premium {
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1),
+      0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
 
-.btn-lg {
-  @apply h-11 rounded-md px-8 text-base;
-}
+  .gradient-clinical {
+    background: linear-gradient(135deg, hsl(221 83% 53%) 0%, hsl(262 83% 58%) 100%);
+  }
 
-.card {
-  @apply rounded-lg border bg-card text-card-foreground shadow-sm;
-}
+  .gradient-success {
+    background: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(142 76% 30%) 100%);
+  }
 
-.card-header {
-  @apply flex flex-col space-y-1.5 p-6;
-}
+  .gradient-warning {
+    background: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(38 92% 45%) 100%);
+  }
 
-.card-title {
-  @apply text-2xl font-semibold leading-none tracking-tight;
-}
-
-.card-content {
-  @apply p-6 pt-0;
+  .gradient-danger {
+    background: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(0 84% 50%) 100%);
+  }
 }

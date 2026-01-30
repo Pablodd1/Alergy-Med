@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
-import { Mic, Camera, Upload, Type, Square, Trash2, Check, Loader2, FileText, Image as ImageIcon, Music } from 'lucide-react'
+import { Mic, Upload, Type, Square, Trash2, Eye, EyeOff, ArrowRight, FileText } from 'lucide-react'
 
 interface CaptureSource {
   id: string
@@ -21,18 +21,16 @@ interface CaptureSource {
 
 interface CaptureModuleProps {
   visitId: string
-  userId: string
-  onNext: () => void
+  onAnalysisStarted: () => void
 }
 
-export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
+export function CaptureModule({ visitId, onAnalysisStarted }: CaptureModuleProps) {
   const [sources, setSources] = useState<CaptureSource[]>([])
   const [isRecording, setIsRecording] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
   const [textInput, setTextInput] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
-  const [processingType, setProcessingType] = useState<string>('')
-  const [isSaving, setIsSaving] = useState(false)
+  const [showSources, setShowSources] = useState(true)
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
@@ -41,7 +39,7 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
   const { toast } = useToast()
 
   // Audio recording functions
-  const startRecording = async () => {
+  const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mediaRecorder = new MediaRecorder(stream)
@@ -57,9 +55,6 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
         const reader = new FileReader()
 
         reader.onloadend = async () => {
-          setIsProcessing(true)
-          setProcessingType('Transcribing audio...')
-
           try {
             const formData = new FormData()
             formData.append('audio', audioBlob, 'audio.webm')
@@ -90,9 +85,8 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
             setSources(prev => [...prev, newSource])
 
             toast({
-              title: '✅ Audio Transcribed Successfully',
-              description: `Added ${result.text.length} characters of text from audio recording.`,
-              duration: 3000
+              title: 'Audio Transcribed',
+              description: `Extracted ${result.text.length} characters of text.`
             })
 
           } catch (error) {
@@ -102,9 +96,6 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
               description: error instanceof Error ? error.message : 'Failed to transcribe audio. Please try again.',
               variant: 'destructive'
             })
-          } finally {
-            setIsProcessing(false)
-            setProcessingType('')
           }
         }
 
@@ -127,220 +118,141 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
         variant: 'destructive'
       })
     }
-  }
+  }, [visitId, toast])
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop()
       setIsRecording(false)
-
       if (recordingIntervalRef.current) {
         clearInterval(recordingIntervalRef.current)
       }
     }
   }
 
-  // Camera capture
-  const processCameraImage = async (file: File) => {
-    setIsProcessing(true)
-    setProcessingType('Processing image...')
-
-    try {
-      const formData = new FormData()
-      formData.append('image', file)
-      formData.append('visitId', visitId)
-
-      const response = await fetch('/api/ocr', {
-        method: 'POST',
-        body: formData
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'OCR processing failed')
-      }
-
-      const result = await response.json()
-
-      const newSource: CaptureSource = {
-        id: Date.now().toString(),
-        type: 'image',
-        content: result.text,
-        metadata: {
-          filename: file.name,
-          timestamp: new Date().toISOString(),
-          confidence: result.confidence
-        }
-      }
-
-      setSources(prev => [...prev, newSource])
-
-      toast({
-        title: '✅ Image Processed Successfully',
-        description: `Added "${file.name}" - Extracted ${result.text.length} characters`,
-        duration: 3000
-      })
-
-    } catch (error) {
-      console.error('Camera capture error:', error)
-      toast({
-        title: 'Processing Error',
-        description: error instanceof Error ? error.message : 'Failed to process image. Please try again.',
-        variant: 'destructive'
-      })
-    } finally {
-      setIsProcessing(false)
-      setProcessingType('')
-    }
-  }
-
-  const triggerCamera = () => {
-    const input = document.getElementById('camera-upload')
-    if (input) {
-      input.click()
-    }
-  }
-
   // File upload
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
-    if (!files) return
+    if (!files || files.length === 0) return
 
-    for (const file of Array.from(files)) {
-      await processFile(file)
-    }
-  }
-
-  const processFile = async (file: File) => {
     setIsProcessing(true)
-    setProcessingType(`Processing ${file.name}...`)
 
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('visitId', visitId)
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('visitId', visitId)
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      })
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        })
 
-      if (!response.ok) {
-        throw new Error('File processing failed')
-      }
-
-      const result = await response.json()
-
-      const newSource: CaptureSource = {
-        id: Date.now().toString(),
-        type: 'document',
-        content: result.text,
-        metadata: {
-          filename: file.name,
-          timestamp: new Date().toISOString(),
-          confidence: result.confidence
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || `Failed to upload ${file.name}`)
         }
+
+        const result = await response.json()
+
+        const newSource: CaptureSource = {
+          id: Date.now().toString() + i,
+          type: 'document',
+          content: result.text,
+          metadata: {
+            filename: file.name,
+            timestamp: new Date().toISOString()
+          }
+        }
+
+        setSources(prev => [...prev, newSource])
+
+        toast({
+          title: 'File Processed',
+          description: `Successfully extracted text from ${file.name}`
+        })
+
+      } catch (error) {
+        console.error('File upload error:', error)
+        toast({
+          title: 'Upload Error',
+          description: error instanceof Error ? error.message : `Failed to process ${file.name}`,
+          variant: 'destructive'
+        })
       }
-
-      setSources(prev => [...prev, newSource])
-
-      toast({
-        title: '✅ Document Processed Successfully',
-        description: `Added "${file.name}" - Extracted ${result.text.length} characters`,
-        duration: 3000
-      })
-
-    } catch (error) {
-      toast({
-        title: 'Processing Error',
-        description: 'Failed to process document. Please try again.',
-        variant: 'destructive'
-      })
-    } finally {
-      setIsProcessing(false)
-      setProcessingType('')
     }
+
+    setIsProcessing(false)
+    event.target.value = '' // Reset input
   }
 
-  // Text input
-  const addTextInput = () => {
-    if (textInput.trim()) {
-      const newSource: CaptureSource = {
-        id: Date.now().toString(),
-        type: 'text',
-        content: textInput.trim(),
-        metadata: {
-          timestamp: new Date().toISOString()
-        }
+  const handleAddText = () => {
+    if (!textInput.trim()) return
+
+    const newSource: CaptureSource = {
+      id: Date.now().toString(),
+      type: 'text',
+      content: textInput,
+      metadata: {
+        timestamp: new Date().toISOString()
       }
-
-      setSources(prev => [...prev, newSource])
-      setTextInput('')
-
-      toast({
-        title: '✅ Text Added Successfully',
-        description: `Added ${textInput.length} characters of text`,
-        duration: 3000
-      })
     }
-  }
 
-  const removeSource = (id: string) => {
-    setSources(prev => prev.filter(source => source.id !== id))
+    setSources(prev => [...prev, newSource])
+    setTextInput('')
     toast({
-      title: 'Source Removed',
-      description: 'Source has been removed from the visit',
-      duration: 2000
+      title: 'Note Added',
+      description: 'Your text note has been added as a source.'
     })
   }
 
-  const startAnalysis = async () => {
+  const removeSource = (id: string) => {
+    setSources(prev => prev.filter(s => s.id !== id))
+  }
+
+  const handleStartAnalysis = async () => {
     if (sources.length === 0) {
       toast({
         title: 'No Sources',
-        description: 'Please add at least one source (audio, image, document, or text) before analyzing',
+        description: 'Please capture some information before starting analysis.',
         variant: 'destructive'
       })
       return
     }
 
-    setIsSaving(true)
-
     try {
-      // Update the visit in database with sources
-      const response = await fetch(`/api/visits/${visitId}`, {
+      setIsProcessing(true)
+
+      // Get current visit data to preserve metadata if needed
+      const visitResponse = await fetch(`/api/visits/${visitId}`)
+      if (!visitResponse.ok) throw new Error('Visit not found')
+      const visit = await visitResponse.json()
+
+      // Update visit with all sources
+      const updateResponse = await fetch(`/api/visits/${visitId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ sources }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update visit with sources');
-      }
-
-      toast({
-        title: '✅ Sources Saved Successfully',
-        description: `${sources.length} source(s) saved. Starting AI analysis...`,
-        duration: 3000
+        body: JSON.stringify({
+          sources: sources,
+          status: 'draft'
+        }),
       })
 
-      // Small delay to show success message
-      setTimeout(() => {
-        onNext()
-      }, 500)
+      if (!updateResponse.ok) throw new Error('Failed to update visit sources')
 
+      onAnalysisStarted()
     } catch (error) {
-      console.error('Error starting analysis:', error)
+      console.error('Analysis start error:', error)
       toast({
-        title: 'Error Saving Sources',
-        description: error instanceof Error ? error.message : 'Failed to save sources. Please try again.',
+        title: 'Analysis Error',
+        description: 'Failed to prepare information for analysis.',
         variant: 'destructive'
       })
     } finally {
-      setIsSaving(false)
+      setIsProcessing(false)
     }
   }
 
@@ -350,257 +262,171 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const getSourceIcon = (type: string) => {
-    switch (type) {
-      case 'audio': return <Music className="h-4 w-4" />
-      case 'image': return <ImageIcon className="h-4 w-4" />
-      case 'document': return <FileText className="h-4 w-4" />
-      case 'text': return <Type className="h-4 w-4" />
-      default: return <FileText className="h-4 w-4" />
-    }
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Processing Indicator */}
-      {(isProcessing || isSaving) && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center space-x-3">
-              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-              <div>
-                <p className="font-medium text-blue-900">
-                  {isSaving ? 'Saving sources...' : processingType}
-                </p>
-                <p className="text-sm text-blue-700">
-                  {isSaving ? 'Please wait while we save your data' : 'AI is processing your input'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Recording Indicator */}
-      {isRecording && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2">
-                <div className="h-3 w-3 bg-red-600 rounded-full animate-pulse"></div>
-                <span className="font-medium text-red-900">RECORDING</span>
-              </div>
-              <span className="text-red-700 font-mono">{formatTime(recordingTime)}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Capture Controls */}
-      <Card>
+    <div className="space-y-6 animate-fade-in">
+      <Card className="overflow-hidden border-none shadow-premium">
+        <div className="medical-gradient h-2 bg-blue-600" />
         <CardHeader>
-          <CardTitle>Step 1: Capture Information</CardTitle>
+          <CardTitle className="text-2xl text-blue-900">Capture Visit Details</CardTitle>
           <CardDescription>
-            Add medical information using voice, camera, documents, or text. Each source will be confirmed before adding.
+            Use voice, documents, or text to capture patient information.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Audio Recording */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">🎤 Voice Recording (Live Transcription)</label>
-            <div className="flex gap-2">
+        <CardContent className="space-y-8">
+          {/* Quick Actions Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Recording Section */}
+            <div className={`p-6 rounded-2xl border transition-all duration-300 ${isRecording ? 'border-red-200 bg-red-50 ring-2 ring-red-100' : 'bg-white border-blue-50'}`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className={`p-2 rounded-lg ${isRecording ? 'bg-red-500' : 'bg-blue-600'}`}>
+                    <Mic className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="font-semibold text-blue-900">Voice Note</span>
+                </div>
+                {isRecording && (
+                  <span className="text-red-600 font-mono font-bold animate-pulse">
+                    {formatTime(recordingTime)}
+                  </span>
+                )}
+              </div>
+
               <Button
                 onClick={isRecording ? stopRecording : startRecording}
-                variant={isRecording ? 'destructive' : 'default'}
-                className="flex-1"
-                disabled={isProcessing}
+                className={`w-full h-14 rounded-xl text-lg font-medium transition-all ${isRecording ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'} shadow-lg`}
               >
                 {isRecording ? (
-                  <>
-                    <Square className="mr-2 h-5 w-5" />
-                    Stop Recording ({formatTime(recordingTime)})
-                  </>
+                  <><Square className="mr-2 h-5 w-5" /> Stop Recording</>
                 ) : (
-                  <>
-                    <Mic className="mr-2 h-5 w-5" />
-                    Start Recording
-                  </>
+                  <><Mic className="mr-2 h-5 w-5" /> Start Capture</>
                 )}
               </Button>
             </div>
-            <p className="text-xs text-gray-500">Click to start recording. Audio will be automatically transcribed when you stop.</p>
+
+            {/* Document Upload Section */}
+            <div className="p-6 rounded-2xl border bg-white border-blue-50">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="p-2 rounded-lg bg-indigo-600">
+                  <Upload className="h-5 w-5 text-white" />
+                </div>
+                <span className="font-semibold text-blue-900">Medical Documents</span>
+              </div>
+
+              <Button
+                onClick={() => document.getElementById('file-upload')?.click()}
+                variant="outline"
+                className="w-full h-14 rounded-xl border-2 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 border-indigo-100 text-indigo-600 font-medium"
+                disabled={isProcessing}
+              >
+                <FileText className="mr-2 h-5 w-5" />
+                {isProcessing ? 'Processing...' : 'Upload Files (PDF, DOCX)'}
+              </Button>
+              <input
+                id="file-upload"
+                type="file"
+                multiple
+                accept=".pdf,.docx,.doc,.txt"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </div>
           </div>
 
-          {/* Camera Capture */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">📷 Camera / Photos</label>
-            <Button
-              onClick={triggerCamera}
-              className="w-full"
-              disabled={isProcessing || isRecording}
-              variant="outline"
-            >
-              <Camera className="mr-2 h-5 w-5" />
-              Take Photo or Upload Image
-            </Button>
-            <p className="text-xs text-gray-500">Capture handwritten notes, documents, or medical forms. OCR will extract text.</p>
+          {/* Text Input Section */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2 text-blue-900">
+              <Type className="h-5 w-5" />
+              <span className="font-semibold">Additional Observations</span>
+            </div>
+            <div className="relative group">
+              <Textarea
+                placeholder="Type clinician notes or observations here..."
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                className="min-h-[120px] rounded-xl border-blue-100 focus:border-blue-300 focus:ring-blue-100 text-base p-4"
+              />
+              <Button
+                onClick={handleAddText}
+                disabled={!textInput.trim()}
+                className="absolute bottom-3 right-3 rounded-lg bg-blue-900 hover:bg-black text-white"
+                size="sm"
+              >
+                Add Note
+              </Button>
+            </div>
           </div>
-
-          {/* Document Upload */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">📄 Documents (PDF, Word, Images)</label>
-            <Button
-              onClick={() => document.getElementById('file-upload')?.click()}
-              className="w-full"
-              disabled={isProcessing || isRecording}
-              variant="outline"
-            >
-              <Upload className="mr-2 h-5 w-5" />
-              Upload Documents
-            </Button>
-            <p className="text-xs text-gray-500">Upload PDF, Word documents, or scanned papers. Supports handwritten content.</p>
-          </div>
-
-          {/* Text Input */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">✍️ Type or Paste Text</label>
-            <Textarea
-              placeholder="Type or paste medical information here (patient symptoms, history, notes, etc.)..."
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              rows={4}
-              disabled={isProcessing || isRecording}
-            />
-            <Button
-              onClick={addTextInput}
-              disabled={!textInput.trim() || isProcessing || isRecording}
-              className="w-full"
-            >
-              <Type className="mr-2 h-4 w-4" />
-              ADD Text to Visit
-            </Button>
-          </div>
-
-          <input
-            id="file-upload"
-            type="file"
-            multiple
-            accept=".pdf,.docx,.doc,.txt,.jpg,.jpeg,.png,.gif"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-
-          <input
-            id="camera-upload"
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) {
-                processCameraImage(file)
-              }
-            }}
-            className="hidden"
-          />
         </CardContent>
       </Card>
 
-      {/* Sources List */}
+      {/* Captured Sources Feed */}
       {sources.length > 0 && (
-        <Card className="border-green-200">
-          <CardHeader className="bg-green-50">
-            <CardTitle className="flex items-center text-green-900">
-              <Check className="mr-2 h-5 w-5" />
-              Sources Added ({sources.length})
-            </CardTitle>
-            <CardDescription className="text-green-700">
-              Review your captured information before analysis
-            </CardDescription>
+        <Card className="border-none shadow-premium animate-fade-in">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-xl text-blue-900">Captured Content ({sources.length})</CardTitle>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setShowSources(!showSources)}>
+              {showSources ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </Button>
           </CardHeader>
-          <CardContent className="pt-6">
-            <div className="space-y-3 mb-6">
-              {sources.map((source) => (
-                <div key={source.id} className="border rounded-lg p-4 bg-gray-50">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center space-x-2">
-                      <div className="flex items-center space-x-1 text-xs font-medium px-2 py-1 bg-white border rounded">
-                        {getSourceIcon(source.type)}
-                        <span>{source.type.toUpperCase()}</span>
+          {showSources && (
+            <CardContent>
+              <div className="space-y-3">
+                {sources.map((source) => (
+                  <div
+                    key={source.id}
+                    className="flex items-start justify-between p-4 rounded-xl bg-slate-50 border border-slate-100 group animate-fade-in"
+                  >
+                    <div className="flex items-start space-x-3 w-full">
+                      <div className="p-2 rounded-lg bg-white shadow-sm">
+                        {source.type === 'audio' && <Mic className="h-4 w-4 text-red-500" />}
+                        {source.type === 'document' && <FileText className="h-4 w-4 text-indigo-500" />}
+                        {source.type === 'text' && <Type className="h-4 w-4 text-slate-500" />}
                       </div>
-                      {source.metadata.filename && (
-                        <span className="text-xs text-gray-600">📎 {source.metadata.filename}</span>
-                      )}
-                      <span className="text-xs text-green-600 flex items-center">
-                        <Check className="h-3 w-3 mr-1" />
-                        Confirmed
-                      </span>
+                      <div className="flex-1 overflow-hidden">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                            {source.type} • {new Date(source.metadata.timestamp || '').toLocaleTimeString()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-700 line-clamp-3 leading-relaxed">
+                          {source.content}
+                        </p>
+                      </div>
                     </div>
                     <Button
-                      onClick={() => removeSource(source.id)}
                       variant="ghost"
                       size="sm"
+                      onClick={() => removeSource(source.id)}
+                      className="text-slate-400 hover:text-red-500 hover:bg-red-50 ml-2"
                     >
-                      <Trash2 className="h-4 w-4 text-red-600" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="text-sm text-gray-700 bg-white p-2 rounded border max-h-24 overflow-y-auto">
-                    {source.content.substring(0, 200)}
-                    {source.content.length > 200 && '...'}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {source.content.length} characters
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex justify-between items-center pt-4 border-t">
-              <Button
-                onClick={() => {
-                  setSources([])
-                  toast({ title: 'All sources cleared', duration: 2000 })
-                }}
-                variant="outline"
-                disabled={sources.length === 0 || isSaving}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Clear All
-              </Button>
-
-              <Button
-                onClick={startAnalysis}
-                disabled={sources.length === 0 || isSaving}
-                size="lg"
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Check className="mr-2 h-5 w-5" />
-                    Save & Analyze ({sources.length} source{sources.length !== 1 ? 's' : ''})
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardContent>
+                ))}
+              </div>
+            </CardContent>
+          )}
         </Card>
       )}
 
-      {/* No Sources Message */}
-      {sources.length === 0 && !isProcessing && !isRecording && (
-        <Card className="border-gray-200">
-          <CardContent className="pt-6 text-center text-gray-500">
-            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="font-medium">No sources added yet</p>
-            <p className="text-sm">Use one of the capture methods above to add information to this visit</p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Final Action Button */}
+      <div className="flex justify-end pt-4 sticky bottom-4">
+        <Button
+          onClick={handleStartAnalysis}
+          disabled={sources.length === 0 || isProcessing}
+          className="btn-premium h-16 px-10 text-lg group"
+        >
+          {isProcessing ? (
+            'Preparing Analysis...'
+          ) : (
+            <>
+              Confirm & Start Medical Analysis
+              <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   )
 }

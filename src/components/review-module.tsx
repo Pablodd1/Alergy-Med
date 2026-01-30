@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
@@ -203,14 +203,10 @@ export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
   const [analysisStatus, setAnalysisStatus] = useState<'analyzing' | 'complete' | 'partial' | 'error'>('analyzing')
   const [missingFields, setMissingFields] = useState<string[]>([])
   const [redFlags, setRedFlags] = useState<string[]>([])
-  
+
   const { toast } = useToast()
 
-  useEffect(() => {
-    extractFacts()
-  }, [visitId])
-
-  const extractFacts = async () => {
+  const extractFacts = useCallback(async () => {
     try {
       setIsExtracting(true)
       setError(null)
@@ -241,10 +237,7 @@ export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
 
       const result = await response.json()
       setExtraction(result)
-      
-      // Analyze the completeness of the extraction
-      analyzeDataCompleteness(result)
-      
+
       // Analyze the completeness of the extraction
       analyzeDataCompleteness(result)
 
@@ -265,7 +258,11 @@ export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
     } finally {
       setIsExtracting(false)
     }
-  }
+  }, [visitId, toast])
+
+  useEffect(() => {
+    extractFacts()
+  }, [extractFacts])
 
   const handleFieldChange = (fieldPath: string, value: any) => {
     if (!extraction) return
@@ -282,7 +279,7 @@ export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
     // Set the new value
     current[pathParts[pathParts.length - 1]] = value
     setExtraction(newExtraction)
-    
+
     // Re-analyze completeness after edits
     analyzeDataCompleteness(newExtraction)
   }
@@ -327,16 +324,16 @@ export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
       flags.push('⚠️ Severe allergic reaction reported')
     }
 
-    if (data.hpi?.triggers && data.hpi.triggers.some((t: string) => 
-      ['anaphylaxis', 'severe reaction', 'hospitalization', 'epinephrine'].some(keyword => 
+    if (data.hpi?.triggers && data.hpi.triggers.some((t: string) =>
+      ['anaphylaxis', 'severe reaction', 'hospitalization', 'epinephrine'].some(keyword =>
         t.toLowerCase().includes(keyword)
       )
     )) {
       flags.push('🚨 History of severe allergic reactions requiring medical intervention')
     }
 
-    if (data.exam?.some((e: string) => 
-      ['wheezing', 'stridor', 'hypotension', 'tachycardia'].some(keyword => 
+    if (data.exam?.some((e: string) =>
+      ['wheezing', 'stridor', 'hypotension', 'tachycardia'].some(keyword =>
         e.toLowerCase().includes(keyword)
       )
     )) {
@@ -679,7 +676,7 @@ export function ReviewModule({ visitId, onBack, onNext }: ReviewModuleProps) {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Capture
         </Button>
-        
+
         <Button onClick={handleNext} disabled={!extraction}>
           Generate Medical Note
           <ArrowRight className="ml-2 h-4 w-4" />

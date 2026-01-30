@@ -135,7 +135,7 @@ export interface IMockVisit {
   };
   sources: Array<{
     id: string;
-    type: 'audio' | 'image' | 'document' | 'text';
+    type: 'audio' | 'image' | 'document' | 'text' | 'paste';
     content: string;
     metadata: {
       filename?: string;

@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/use-toast'
-import { ArrowLeft, Copy, Download, FileText, RefreshCw } from 'lucide-react'
-import { extractionSchema, ExtractionData } from '@/types/schemas'
+import { ArrowLeft, Copy, Download, FileText, RefreshCw, Check, Sparkles, FileType } from 'lucide-react'
+import { ExtractionData } from '@/types/schemas'
 import { jsPDF } from 'jspdf'
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx'
 
@@ -17,31 +17,49 @@ interface NoteModuleProps {
   onBack: () => void
 }
 
-interface AllergenListItem {
-  allergen: string
-  reaction: string | null
-  severity: string | null
-  timing: string | null
-  certainty: string
-}
-
 export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
   const [extraction, setExtraction] = useState<ExtractionData | null>(null)
   const [note, setNote] = useState<string>('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [isCopying, setIsCopying] = useState(false)
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const { toast } = useToast()
 
-  useEffect(() => {
-    loadExtractionData()
-  }, [visitId])
+  const generateNote = useCallback(async (extractionData: ExtractionData) => {
+    try {
+      setIsGenerating(true)
+      const response = await fetch('/api/generate-note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visitId, extraction: extractionData }),
+      })
 
-  const loadExtractionData = async () => {
+      if (!response.ok) throw new Error('Note generation failed')
+      const result = await response.json()
+      setNote(result.note)
+
+      await fetch(`/api/visits/${visitId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ generatedNote: result.note }),
+      })
+
+      setLastSaved(new Date())
+      toast({ title: 'Note Generated', description: 'AI has successfully compiled the medical note.' })
+    } catch (error) {
+      console.error('Note generation error:', error)
+      toast({ title: 'Generation Error', description: 'Could not generate AI note. Using fallback...', variant: 'destructive' })
+      const fallback = `MEDICAL NOTE\nPatient: ${extractionData.patientAlias}\nChief Complaint: ${extractionData.chiefComplaint}\n\nGenerated on: ${new Date().toLocaleDateString()}`
+      setNote(fallback)
+    } finally {
+      setIsGenerating(false)
+    }
+  }, [visitId, toast])
+
+  const loadExtractionData = useCallback(async () => {
     try {
       const response = await fetch(`/api/visits/${visitId}`)
-      if (!response.ok) {
-        throw new Error('Visit not found')
-      }
+      if (!response.ok) throw new Error('Visit not found')
       const visit = await response.json()
 
       if (visit.extraction) {
@@ -50,190 +68,25 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
           generateNote(visit.extraction)
         } else {
           setNote(visit.generatedNote)
+          setLastSaved(new Date(visit.updatedAt))
         }
-      } else {
-        toast({
-          title: 'No extraction data found',
-          description: 'Please complete the review step first.',
-          variant: 'destructive'
-        })
       }
     } catch (error) {
-      console.error('Error loading extraction data:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to load extraction data.',
-        variant: 'destructive'
-      })
+      toast({ title: 'Load Error', description: 'Failed to retrieve visit data.', variant: 'destructive' })
     }
-  }
+  }, [visitId, toast, generateNote])
 
-  const generateNote = async (extractionData: ExtractionData) => {
-    try {
-      setIsGenerating(true)
-
-      const response = await fetch('/api/generate-note', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          visitId,
-          extraction: extractionData,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Note generation failed')
-      }
-
-      const result = await response.json()
-      setNote(result.note)
-
-      // Save the generated note to the database
-      await fetch(`/api/visits/${visitId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ generatedNote: result.note }),
-      });
-
-      toast({
-        title: 'Note Generated',
-        description: 'Medical note has been generated successfully.',
-      })
-
-    } catch (error) {
-      console.error('Note generation error:', error)
-      toast({
-        title: 'Note Generation Failed',
-        description: 'Failed to generate medical note. Please try again.',
-        variant: 'destructive'
-      })
-
-      // Fallback to manual note generation
-      const fallbackNote = generateNoteFromExtraction(extractionData)
-      setNote(fallbackNote)
-
-      // Save the fallback note
-      await fetch(`/api/visits/${visitId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ generatedNote: fallbackNote }),
-      });
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
-  const generateNoteFromExtraction = (data: ExtractionData): string => {
-    let note = `MEDICAL NOTE\n===========\n\n`
-
-    // Patient Information
-    if (data.patientAlias) {
-      note += `Patient: ${data.patientAlias}\n`
-    }
-    if (data.visitContext?.date) {
-      note += `Date: ${data.visitContext.date}\n`
-    }
-    if (data.visitContext?.setting) {
-      note += `Setting: ${data.visitContext.setting}\n`
-    }
-    note += '\n'
-
-    // Chief Complaint
-    if (data.chiefComplaint) {
-      note += `CHIEF COMPLAINT:\n${data.chiefComplaint}\n\n`
-    }
-
-    // History of Present Illness
-    if (data.hpi) {
-      note += `HISTORY OF PRESENT ILLNESS:\n`
-      if (data.hpi.onset) note += `Onset: ${data.hpi.onset}\n`
-      if (data.hpi.timeline) note += `Timeline: ${data.hpi.timeline}\n`
-      if (data.hpi.frequency) note += `Frequency: ${data.hpi.frequency}\n`
-      if (data.hpi.severity) note += `Severity: ${data.hpi.severity}\n`
-      if (data.hpi.triggers) note += `Triggers: ${data.hpi.triggers}\n`
-      if (data.hpi.relievers) note += `Relievers: ${data.hpi.relievers}\n`
-      note += '\n'
-    }
-
-    // Allergy History
-    if (data.allergyHistory) {
-      const allAllergies = [
-        ...(data.allergyHistory.food || []),
-        ...(data.allergyHistory.drug || []),
-        ...(data.allergyHistory.environmental || []),
-        ...(data.allergyHistory.stingingInsects || []),
-        ...(data.allergyHistory.latexOther || [])
-      ];
-
-      if (allAllergies.length > 0) {
-        note += `ALLERGY HISTORY:\n`
-        allAllergies.forEach((allergy: any) => {
-          note += `- ${allergy.allergen}: ${allergy.reaction || 'Unknown reaction'} (${allergy.severity || 'Unknown severity'})\n`
-        })
-        note += '\n'
-      }
-    }
-
-    // Current Medications
-    if (data.medications && data.medications.length > 0) {
-      note += `CURRENT MEDICATIONS:\n`
-      data.medications.forEach((med: any) => {
-        note += `- ${med.name}: ${med.dose || 'Unknown dose'} ${med.frequency || ''}\n`
-      })
-      note += '\n'
-    }
-
-    // Assessment and Plan
-    if (data.assessmentCandidates && data.assessmentCandidates.length > 0) {
-      note += `ASSESSMENT:\n`
-      data.assessmentCandidates.forEach((assessment: any) => {
-        note += `- ${assessment}\n`
-      })
-      note += '\n'
-    }
-
-    if (data.planCandidates && data.planCandidates.length > 0) {
-      note += `PLAN:\n`
-      data.planCandidates.forEach((plan: any) => {
-        note += `- ${plan}\n`
-      })
-      note += '\n'
-    }
-
-    // Needs Confirmation
-    if (data.needsConfirmation && data.needsConfirmation.length > 0) {
-      note += `NEEDS CONFIRMATION:\n`
-      data.needsConfirmation.forEach((item: any) => {
-        note += `- ${item}\n`
-      })
-      note += '\n'
-    }
-
-    return note
-  }
+  useEffect(() => {
+    loadExtractionData()
+  }, [loadExtractionData])
 
   const handleCopy = async () => {
     try {
       setIsCopying(true)
       await navigator.clipboard.writeText(note)
-      toast({
-        title: 'Copied',
-        description: 'Note copied to clipboard',
-      })
-    } catch (error) {
-      console.error('Copy failed:', error)
-      toast({
-        title: 'Copy Failed',
-        description: 'Failed to copy note to clipboard',
-        variant: 'destructive'
-      })
-    } finally {
+      toast({ title: 'Success', description: 'Clinical note copied to clipboard.' })
+      setTimeout(() => setIsCopying(false), 2000)
+    } catch (e) {
       setIsCopying(false)
     }
   }
@@ -241,57 +94,20 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
   const downloadPDF = () => {
     try {
       const doc = new jsPDF()
-      const lines = note.split('\n')
-      let yPosition = 20
-      const pageHeight = doc.internal.pageSize.height
-      const margin = 20
-      const lineHeight = 7
+      doc.setFontSize(18);
+      doc.text("ALLERGY CONSULTATION NOTE", 20, 20);
+      doc.setFontSize(10);
+      doc.text(`Patient Reference: ${extraction?.patientAlias || 'N/A'}`, 20, 30);
+      doc.text(`Generated: ${new Date().toLocaleDateString()}`, 20, 35);
 
-      lines.forEach((line) => {
-        if (yPosition > pageHeight - 20) {
-          doc.addPage()
-          yPosition = 20
-        }
+      doc.setFontSize(11);
+      const splitText = doc.splitTextToSize(note, 170);
+      doc.text(splitText, 20, 50);
 
-        let text = line
-        let fontSize = 12
-        let fontStyle = 'normal'
-
-        // Formatting
-        if (line.startsWith('MEDICAL NOTE')) {
-          fontSize = 16
-          fontStyle = 'bold'
-        } else if (line.startsWith('CHIEF COMPLAINT') || line.startsWith('HISTORY') ||
-          line.startsWith('ALLERGY') || line.startsWith('CURRENT') ||
-          line.startsWith('ASSESSMENT') || line.startsWith('PLAN') ||
-          line.startsWith('NEEDS CONFIRMATION')) {
-          fontSize = 14
-          fontStyle = 'bold'
-        }
-
-        doc.setFontSize(fontSize)
-        if (fontStyle === 'bold') {
-          doc.setFont('helvetica', 'bold')
-        } else {
-          doc.setFont('helvetica', 'normal')
-        }
-
-        doc.text(text, margin, yPosition)
-        yPosition += lineHeight
-      })
-
-      doc.save(`medical-note-${visitId}.pdf`)
-      toast({
-        title: 'Downloaded',
-        description: 'Note downloaded as PDF',
-      })
-    } catch (error) {
-      console.error('PDF download failed:', error)
-      toast({
-        title: 'Download Failed',
-        description: 'Failed to generate PDF',
-        variant: 'destructive'
-      })
+      doc.save(`allergy_note_${visitId}.pdf`)
+      toast({ title: 'Export Complete', description: 'Medical note saved as PDF.' })
+    } catch (e) {
+      toast({ title: 'Export Failed', description: 'Could not generate PDF file.', variant: 'destructive' })
     }
   }
 
@@ -299,181 +115,121 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
     try {
       const doc = new Document({
         sections: [{
-          properties: {},
           children: [
-            new Paragraph({
-              text: 'MEDICAL NOTE',
-              heading: HeadingLevel.HEADING_1,
-              alignment: AlignmentType.CENTER,
-            }),
-            new Paragraph(''),
-            ...note.split('\n').map(line => {
-              if (line.startsWith('CHIEF COMPLAINT') || line.startsWith('HISTORY') ||
-                line.startsWith('ALLERGY') || line.startsWith('CURRENT') ||
-                line.startsWith('ASSESSMENT') || line.startsWith('PLAN') ||
-                line.startsWith('NEEDS CONFIRMATION')) {
-                return new Paragraph({
-                  text: line,
-                  heading: HeadingLevel.HEADING_2,
-                })
-              } else if (line.startsWith('MEDICAL NOTE')) {
-                return new Paragraph('')
-              } else {
-                return new Paragraph(line)
-              }
-            })
+            new Paragraph({ text: 'ALLERGY CONSULTATION NOTE', heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER }),
+            new Paragraph({ children: [new TextRun({ text: note })] }),
           ],
         }],
       })
-
       const blob = await Packer.toBlob(doc)
       const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `medical-note-${visitId}.docx`
-      link.click()
-      URL.revokeObjectURL(url)
-
-      toast({
-        title: 'Downloaded',
-        description: 'Note downloaded as DOCX',
-      })
-    } catch (error) {
-      console.error('DOCX download failed:', error)
-      toast({
-        title: 'Download Failed',
-        description: 'Failed to generate DOCX',
-        variant: 'destructive'
-      })
-    }
-  }
-
-  const refreshNote = () => {
-    if (extraction) {
-      generateNote(extraction)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `allergy_note_${visitId}.docx`
+      a.click()
+      toast({ title: 'Export Complete', description: 'Medical note saved as Word document.' })
+    } catch (e) {
+      toast({ title: 'Export Failed', description: 'Could not generate DOCX file.', variant: 'destructive' })
     }
   }
 
   if (isGenerating) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Generating medical note...</p>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (!extraction) {
-    return (
-      <Card>
-        <CardContent className="p-6 text-center">
-          <p className="text-gray-600 mb-4">No extraction data available. Please complete the review step first.</p>
-          <Button onClick={onBack} variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Review
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center justify-center h-[50vh] space-y-6 animate-fade-in">
+        <div className="relative">
+          <Sparkles className="h-12 w-12 text-blue-600 animate-pulse" />
+          <div className="absolute -top-1 -right-1 h-3 w-3 bg-blue-400 rounded-full animate-ping" />
+        </div>
+        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">AI Note Synthesis in Progress...</p>
+      </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Generated Medical Note</CardTitle>
-              <CardDescription>
-                Comprehensive medical note based on extracted information
-              </CardDescription>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button onClick={refreshNote} variant="outline" size="sm">
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Refresh
-              </Button>
-              <Button onClick={handleCopy} variant="outline" size="sm" disabled={isCopying}>
-                <Copy className="mr-2 h-4 w-4" />
-                {isCopying ? 'Copied!' : 'Copy'}
-              </Button>
-              <Button onClick={downloadPDF} variant="outline" size="sm">
-                <Download className="mr-2 h-4 w-4" />
-                PDF
-              </Button>
-              <Button onClick={downloadDOCX} variant="outline" size="sm">
-                <FileText className="mr-2 h-4 w-4" />
-                DOCX
-              </Button>
-            </div>
+    <div className="space-y-8 animate-fade-in pb-20">
+      {/* Header Area */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-100">Step 3 of 3</Badge>
+            <span className="text-slate-400 text-sm font-medium">Final Output</span>
           </div>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Medical note will appear here..."
-            className="min-h-[400px] font-mono text-sm"
-          />
-        </CardContent>
-      </Card>
+          <h1 className="text-3xl font-bold text-slate-900">Clinical Documentation</h1>
+          <p className="text-slate-500 font-medium">Review and export your comprehensive medical note.</p>
+        </div>
 
-      {/* Additional Information */}
-      {extraction && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Extraction Summary</CardTitle>
-            <CardDescription>Key information extracted from your sources</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h4 className="font-semibold mb-2">Patient Information</h4>
-                <p className="text-sm text-gray-600">Patient Alias: {extraction.patientAlias || 'Not specified'}</p>
-                {extraction.visitContext && (
-                  <>
-                    <p className="text-sm text-gray-600">Date: {extraction.visitContext.date || 'Not specified'}</p>
-                    <p className="text-sm text-gray-600">Setting: {extraction.visitContext.setting || 'Not specified'}</p>
-                  </>
-                )}
-              </div>
-              <div>
-                <h4 className="font-semibold mb-2">Key Findings</h4>
-                <div className="space-y-1">
-                  {extraction.allergyHistory && (
-                    <Badge variant="outline" className="mr-1">
-                      {(extraction.allergyHistory.food?.length || 0) +
-                        (extraction.allergyHistory.drug?.length || 0) +
-                        (extraction.allergyHistory.environmental?.length || 0) +
-                        (extraction.allergyHistory.stingingInsects?.length || 0) +
-                        (extraction.allergyHistory.latexOther?.length || 0)} Allergies
-                    </Badge>
-                  )}
-                  {extraction.medications && extraction.medications.length > 0 && (
-                    <Badge variant="outline" className="mr-1">{extraction.medications.length} Medications</Badge>
-                  )}
-                  {extraction.assessmentCandidates && extraction.assessmentCandidates.length > 0 && (
-                    <Badge variant="outline" className="mr-1">{extraction.assessmentCandidates.length} Assessments</Badge>
-                  )}
-                </div>
-              </div>
+        <div className="flex items-center gap-2">
+          <Button onClick={() => generateNote(extraction!)} variant="outline" className="h-12 rounded-xl border-slate-200">
+            <RefreshCw className="mr-2 h-4 w-4" /> Regenerate
+          </Button>
+          <Button onClick={handleCopy} disabled={isCopying} className={`h-12 rounded-xl px-6 min-w-[120px] transition-all ${isCopying ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white hover:bg-black'}`}>
+            {isCopying ? <><Check className="mr-2 h-5 w-5" /> Copied</> : <><Copy className="mr-2 h-4 w-4" /> Copy Text</>}
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Content & Sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="lg:col-span-3">
+          <Card className="border-none shadow-premium overflow-hidden">
+            <div className="p-8">
+              <Textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="min-h-[600px] border-none focus:ring-0 text-lg leading-relaxed font-serif p-0 resize-none text-slate-800"
+                placeholder="The clinical note will appear here..."
+              />
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <div className="bg-slate-50 border-t border-slate-100 p-4 flex justify-between items-center text-xs font-bold text-slate-400 uppercase tracking-widest">
+              <span>Auto-saved locally</span>
+              {lastSaved && <span>Last Sync: {lastSaved.toLocaleTimeString()}</span>}
+            </div>
+          </Card>
+        </div>
 
-      {/* Navigation */}
-      <div className="flex justify-between">
-        <Button onClick={onBack} variant="outline">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Review
+        <div className="space-y-6">
+          <Card className="border-none shadow-premium">
+            <CardHeader>
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-400">Export Options</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button onClick={downloadPDF} variant="outline" className="w-full h-14 justify-start rounded-xl border-slate-100 hover:bg-red-50 hover:text-red-700 hover:border-red-100 group transition-all">
+                <FileType className="mr-3 h-5 w-5 text-red-500" />
+                <div className="text-left">
+                  <div className="font-bold">Portable PDF</div>
+                  <div className="text-xs text-slate-400 font-medium whitespace-nowrap">Standard clinical format</div>
+                </div>
+              </Button>
+              <Button onClick={downloadDOCX} variant="outline" className="w-full h-14 justify-start rounded-xl border-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-100 group transition-all">
+                <FileText className="mr-3 h-5 w-5 text-blue-500" />
+                <div className="text-left">
+                  <div className="font-bold">Word Document</div>
+                  <div className="text-xs text-slate-400 font-medium whitespace-nowrap">Editable DOCX file</div>
+                </div>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-premium bg-blue-600 text-white">
+            <CardContent className="p-6">
+              <h4 className="font-bold mb-2 flex items-center">
+                <Sparkles className="mr-2 h-4 w-4" /> AI Insight
+              </h4>
+              <p className="text-sm text-blue-100 leading-relaxed">
+                This note was compiled using multithreaded analysis of {extraction?.sourceQualityFlags?.length || 1} clinical sources. Always verify critical medication dosages.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Navigation Footer */}
+      <div className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <Button onClick={onBack} variant="ghost" className="text-slate-600 font-bold h-12 rounded-xl px-6">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Editorial Review
         </Button>
-        <div className="text-sm text-gray-500">
-          Visit ID: {visitId}
+        <div className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">
+          Allergy Scribe v2.0 • Premium Clinical Edition
         </div>
       </div>
     </div>

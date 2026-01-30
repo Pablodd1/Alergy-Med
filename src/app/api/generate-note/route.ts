@@ -10,104 +10,150 @@ const getOpenAIClient = () => {
   return new OpenAI({ apiKey });
 }
 
-const noteGenerationPrompt = `You are an expert allergist creating comprehensive medical documentation. Generate a complete allergy consultation note based on the extracted medical information.
+// ============================================================================
+// SOAP NOTE GENERATION PROMPT
+// Professional Medical Documentation for Allergists & Internal Medicine
+// ============================================================================
 
-CRITICAL REQUIREMENTS:
-1. Create exactly 15 sections as specified below
-2. Include "Needs Confirmation / Missing Data" and "Confidence Flags" sections
-3. Never fabricate information - use clinical reasoning language when data is incomplete
-4. Maintain strict medical documentation standards
-5. Use appropriate medical terminology and allergist-specific language
-6. Flag any OCR/transcription conflicts or uncertainties
-7. NEVER include patient identifiers (names, DOB, addresses, etc.)
+const noteGenerationPrompt = `You are a senior allergist creating a comprehensive SOAP note for medical documentation. Generate a complete, EHR-ready clinical note in third-person professional medical language.
 
-OUTPUT FORMAT:
-Generate a structured note with these exact sections:
+**DOCUMENTATION STANDARDS:**
+- Write in third-person (e.g., "The patient reports..." not "You report...")
+- Use professional medical terminology appropriate for allergist/immunologist practice
+- Include all relevant clinical details with appropriate qualifiers
+- Maintain strict HIPAA compliance - only use provided patient alias
+- Format for direct EHR copy/paste capability
 
-# Patient/Visit Information
-- Date: [visit date or "Not specified"]
-- Setting: [self/clinic/televisit or "Not specified"]
-- Patient Alias: [alias or "Not provided"]
+**REQUIRED SOAP NOTE SECTIONS:**
 
-# Chief Complaint
-[Primary reason for visit]
+═══════════════════════════════════════════════════════════════════
+SUBJECTIVE
+═══════════════════════════════════════════════════════════════════
 
-# History of Present Illness (HPI)
-[Detailed HPI including onset, timeline, frequency, severity, triggers, relievers, exposures]
+**Chief Complaint:** [Primary reason for visit in patient's words]
 
-# Allergy History
-## Food Allergies
-[Structured list with allergen, reaction, severity, timing, certainty]
+**History of Present Illness:**
+[Comprehensive narrative including:
+- Onset, location, duration, characterization
+- Alleviating/aggravating factors
+- Associated symptoms
+- Previous treatments and responses
+- Impact on daily activities]
 
-## Drug Allergies  
-[Structured list with allergen, reaction, severity, timing, certainty]
+**Allergy History:**
+• Food Allergies: [List with reactions, severity, timing]
+• Drug Allergies: [List with reactions, severity, certainty]
+• Environmental Allergies: [List with seasonality]
+• Insect Venom Allergies: [List with severity]
+• Other Allergies: [Latex, contact, etc.]
 
-## Environmental Allergies
-[Structured list with allergen, reaction, seasonality, certainty]
+**Current Medications:**
+[Numbered list with name, dose, frequency, indication]
 
-## Stinging Insect Allergies
-[Structured list with allergen, reaction, severity, certainty]
+**Past Medical History:** [Relevant conditions]
+**Past Surgical History:** [Relevant procedures]
+**Family History:** [Atopic conditions, relevant allergies]
+**Social History:** [Occupation, exposures, smoking, pets, home environment]
 
-## Latex/Other Allergies
-[Structured list with allergen, reaction, severity, certainty]
+**Review of Systems:**
+[Organized by system with positive and pertinent negatives]
 
-# Atopic Comorbidities
-- Asthma: [yes/no/unknown]
-- Eczema/Atopic Dermatitis: [yes/no/unknown]
-- Chronic Rhinitis: [yes/no/unknown]
-- Chronic Sinusitis: [yes/no/unknown]
-- Urticaria/Angioedema: [yes/no/unknown]
+═══════════════════════════════════════════════════════════════════
+OBJECTIVE
+═══════════════════════════════════════════════════════════════════
 
-# Testing & Labs Interpretation
-## Allergy Testing
-[Details of skin testing, specific IgE, component testing, challenges]
+**Vital Signs:** [BP, HR, RR, Temp, SpO2, Weight, Height, BMI if available]
 
-## Laboratory Studies
-[Relevant lab results with interpretation]
+**Physical Examination:**
+• General: [Appearance, distress level]
+• HEENT: [Eyes, nose, throat, ears findings]
+• Neck: [Lymphadenopathy, thyroid]
+• Lungs: [Breath sounds, wheezing, air movement]
+• Skin: [Lesions, rashes, urticaria, eczema]
+• Cardiovascular: [Heart sounds, peripheral pulses]
+• Other systems as relevant
 
-## Other Studies
-[Imaging, pulmonary function tests, etc.]
+**Diagnostic Results:**
+• Allergy Testing: [SPT, sIgE, component testing results]
+• Laboratory Studies: [CBC, IgE, tryptase, relevant labs]
+• Pulmonary Function: [Spirometry if performed]
+• Other Studies: [Imaging, other tests]
 
-# Current Medications
-[List with names, doses, frequencies, indications, responses, adverse effects]
+═══════════════════════════════════════════════════════════════════
+ASSESSMENT
+═══════════════════════════════════════════════════════════════════
 
-# Review of Systems
-**Positive:** [list positive findings]
-**Negative:** [list negative findings]
+**Diagnoses:**
+[Numbered list with ICD-10 codes]
+1. [Diagnosis] (ICD-10: [code]) - [Status: New/Ongoing/Improved/Worsening]
+   Clinical Rationale: [Supporting evidence]
+2. [Continue for all diagnoses]
 
-# Physical Examination
-[Relevant exam findings]
+**Differential Diagnosis:**
+[If applicable, alternative diagnoses to consider]
 
-# Assessment
-[Numbered list of problems/diagnoses with supporting evidence and confidence levels]
+**Clinical Reasoning:**
+[Summary of clinical decision-making process]
 
-# Plan
-[Numbered list of recommendations with rationale and priority levels]
+═══════════════════════════════════════════════════════════════════
+PLAN
+═══════════════════════════════════════════════════════════════════
 
-# Structured Allergy List
-[Comprehensive list of all identified allergens with reactions, severities, timing, and certainty levels]
+**Therapeutic:**
+[Numbered treatment recommendations with rationale]
 
-# Patient Education
-[Topics discussed with patient]
+**Diagnostic:**
+[Ordered or recommended tests with clinical indication]
 
-# Needs Confirmation / Missing Data
-[Items requiring confirmation, incomplete information, or missing data]
+**Patient Education:**
+[Counseling provided, written materials given]
 
-# Source Quality Flags
-[Quality indicators for source material - OCR confidence, transcription clarity, etc.]
+**Emergency Action Plan:**
+[If applicable - anaphylaxis management, epinephrine use]
+
+**Follow-Up:**
+[Return visit timing, criteria for sooner return]
+
+**Referrals:**
+[Specialist referrals if indicated]
+
+═══════════════════════════════════════════════════════════════════
+BILLING & CODING
+═══════════════════════════════════════════════════════════════════
+
+**ICD-10 Diagnosis Codes:**
+[List all applicable codes with descriptions]
+
+**CPT Procedure Codes:**
+[List all documented services with descriptions]
+
+═══════════════════════════════════════════════════════════════════
+CLINICAL DECISION SUPPORT
+═══════════════════════════════════════════════════════════════════
+
+**🚨 RED FLAGS:**
+[Critical findings requiring immediate attention]
+
+**⚠️ MISSING INFORMATION:**
+[Data gaps that affect clinical decision-making]
+
+**📋 RECOMMENDED ADDITIONAL TESTING:**
+[Tests that would enhance diagnostic certainty]
+
+═══════════════════════════════════════════════════════════════════
+
+**Confidence Assessment:**
+- High: Information clearly documented in source materials
+- Medium: Information present but requires confirmation
+- Low: Information inferred or incomplete
+
+**Documentation Quality Notes:**
+[Any concerns about source material clarity]
 
 ---
-**CONFIDENCE INDICATORS:**
-- High confidence: Clear documentation from reliable sources
-- Medium confidence: Reasonable certainty with some ambiguity
-- Low confidence: Significant uncertainty or poor source quality
-
-**CLINICAL REASONING NOTES:**
-[Additional clinical reasoning not captured in structured format]
-
-Generated by Allergy Scribe - AI-Assisted Documentation Tool
-Visit ID: {visitId}
-Generated: {current date/time}`
+Generated by Allergy Scribe - AI-Assisted Clinical Documentation
+Visit ID: {visitId} | Generated: {timestamp}
+This note is AI-generated and requires physician review before finalization.`
 
 export async function POST(request: NextRequest) {
   try {
@@ -115,7 +161,7 @@ export async function POST(request: NextRequest) {
 
     if (!visitId || !extraction) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: visitId and extraction data required' },
         { status: 400 }
       )
     }
@@ -123,7 +169,14 @@ export async function POST(request: NextRequest) {
     // Validate the extraction data
     const validatedExtraction: ExtractionData = extractionSchema.parse(extraction)
 
-    // Call OpenAI to generate the note
+    // Build enhanced context for note generation
+    const extractionContext = {
+      ...validatedExtraction,
+      generationTimestamp: new Date().toISOString(),
+      visitId: visitId
+    }
+
+    // Call OpenAI to generate comprehensive SOAP note
     const openai = getOpenAIClient()
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
@@ -134,22 +187,35 @@ export async function POST(request: NextRequest) {
         },
         {
           role: 'user',
-          content: `Generate a comprehensive allergy consultation note based on this extracted medical information:\n\n${JSON.stringify(validatedExtraction, null, 2)}\n\nEnsure all 15 required sections are included and maintain clinical accuracy.`
+          content: `Generate a complete, EHR-ready SOAP note for this allergist consultation based on the following extracted clinical data. Include all ICD-10 and CPT codes. Highlight any red flags, missing information, and recommended testing.\n\nExtracted Clinical Data:\n${JSON.stringify(extractionContext, null, 2)}\n\nGenerate a comprehensive clinical note following the exact format specified.`
         }
       ],
-      temperature: 0.2, // Low temperature for consistent, accurate output
-      max_tokens: 6000
+      temperature: 0.2,
+      max_tokens: 8000
     })
 
     const generatedNote = completion.choices[0].message.content || ''
 
-    // Post-process the note to ensure formatting
+    // Post-process for consistent formatting
     const processedNote = generatedNote
-      .replace(/\*\*\s*(.*?)\s*\*\*/g, '**$1**') // Ensure consistent bold formatting
-      .replace(/#\s*(.*?)\s*$/gm, '# $1') // Ensure consistent header formatting
+      .replace(/\*\*\s*(.*?)\s*\*\*/g, '**$1**')
+      .replace(/#\s*(.*?)\s*$/gm, '# $1')
+      .replace(/═{3,}/g, '═'.repeat(60))
       .trim()
 
-    return NextResponse.json({ note: processedNote })
+    // Add footer with metadata
+    const finalNote = processedNote + `\n\n---\n*Visit ID: ${visitId} | Generated: ${new Date().toLocaleString()}*\n*This AI-generated note requires physician review and attestation before EHR entry.*`
+
+    return NextResponse.json({
+      note: finalNote,
+      metadata: {
+        visitId,
+        generatedAt: new Date().toISOString(),
+        cptCodesExtracted: validatedExtraction.cptCodes?.length || 0,
+        icd10CodesExtracted: validatedExtraction.icd10Codes?.length || 0,
+        redFlagsIdentified: validatedExtraction.redFlags?.length || 0
+      }
+    })
 
   } catch (error) {
     console.error('Note generation error:', error)
@@ -163,13 +229,13 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof Error && error.message.includes('Validation')) {
       return NextResponse.json(
-        { error: 'Failed to validate extraction data', details: error.message },
+        { error: 'Extraction data validation failed', details: error.message },
         { status: 500 }
       )
     }
 
     return NextResponse.json(
-      { error: 'Failed to generate medical note' },
+      { error: 'Failed to generate clinical note. Please try again.' },
       { status: 500 }
     )
   }

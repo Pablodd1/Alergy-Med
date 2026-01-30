@@ -3,17 +3,24 @@ import connectToDatabase from '@/lib/mongodb';
 import { ExtractionData } from '@/types/schemas';
 import { MockVisitService } from '@/lib/mock-visit-service';
 
-// Union type for both real and mock visits
+// ============================================================================
+// VISIT SERVICE - No Authentication Required
+// Production-Ready Clinical Documentation Service
+// ============================================================================
+
 type VisitType = IVisit | import('@/lib/mock-visit-service').IMockVisit;
 
+// Default anonymous user for no-login operation
+const ANONYMOUS_USER = 'anonymous-clinical-user';
+
 export interface CreateVisitInput {
-  userId: string;
+  userId?: string;
   visitId: string;
   patientAlias: string;
   chiefComplaint: string;
   sources: Array<{
     id: string;
-    type: 'audio' | 'image' | 'document' | 'text';
+    type: 'audio' | 'document' | 'text' | 'paste';
     content: string;
     metadata: {
       filename?: string;
@@ -31,34 +38,41 @@ export interface CreateVisitInput {
 export interface UpdateVisitInput {
   patientAlias?: string;
   chiefComplaint?: string;
-  hpi?: Partial<IVisit['hpi']>;
-  allergyHistory?: Partial<IVisit['allergyHistory']>;
-  medications?: IVisit['medications'];
+  hpi?: any;
+  allergyHistory?: any;
+  medications?: any;
   pmh?: string[];
   psh?: string[];
   fh?: string[];
   sh?: string[];
-  ros?: Partial<IVisit['ros']>;
-  exam?: Partial<IVisit['exam']>;
-  testsAndLabs?: IVisit['testsAndLabs'];
+  ros?: any;
+  exam?: any;
+  testsAndLabs?: any;
   assessmentCandidates?: string[];
   planCandidates?: string[];
-  needsConfirmation?: Partial<IVisit['needsConfirmation']>;
-  sourceQualityFlags?: Partial<IVisit['sourceQualityFlags']>;
-  atopicComorbidities?: Partial<IVisit['atopicComorbidities']>;
-  sources?: IVisit['sources'];
+  needsConfirmation?: any;
+  sourceQualityFlags?: any;
+  atopicComorbidities?: any;
+  sources?: any[];
   generatedNote?: string;
   status?: 'draft' | 'completed' | 'archived';
   extraction?: any;
   completedAt?: Date;
+  cptCodes?: any[];
+  icd10Codes?: any[];
+  redFlags?: any[];
+  soapNote?: any;
 }
 
 export class VisitService {
+
+  // Create a new visit - no authentication required
   static async createVisit(input: CreateVisitInput): Promise<VisitType> {
     const conn = await connectToDatabase();
+    const userId = input.userId || ANONYMOUS_USER;
 
     if (!conn) {
-      return MockVisitService.createVisit(input);
+      return MockVisitService.createVisit({ ...input, userId });
     }
 
     const existingVisit = await Visit.findOne({ visitId: input.visitId });
@@ -68,6 +82,7 @@ export class VisitService {
 
     const visit = new Visit({
       ...input,
+      userId,
       status: 'draft'
     });
 
@@ -75,152 +90,144 @@ export class VisitService {
     return visit;
   }
 
-  static async findByVisitId(visitId: string, userId: string): Promise<VisitType | null> {
+  // Find visit by ID - no user restriction for anonymous access
+  static async findByVisitId(visitId: string, userId?: string): Promise<VisitType | null> {
     const conn = await connectToDatabase();
+    const effectiveUserId = userId || ANONYMOUS_USER;
 
     if (!conn) {
-      return MockVisitService.findByVisitId(visitId, userId);
+      return MockVisitService.findByVisitId(visitId, effectiveUserId);
     }
 
-    return Visit.findOne({ visitId, userId });
+    // First try with userId, then without for anonymous access
+    let visit = await Visit.findOne({ visitId, userId: effectiveUserId });
+    if (!visit) {
+      visit = await Visit.findOne({ visitId });
+    }
+    return visit;
   }
 
-  static async findById(id: string, userId: string): Promise<VisitType | null> {
+  static async findById(id: string, userId?: string): Promise<VisitType | null> {
     const conn = await connectToDatabase();
+    const effectiveUserId = userId || ANONYMOUS_USER;
 
     if (!conn) {
       return MockVisitService.findById(id);
     }
 
-    return Visit.findOne({ _id: id, userId });
+    let visit = await Visit.findOne({ _id: id, userId: effectiveUserId });
+    if (!visit) {
+      visit = await Visit.findOne({ _id: id });
+    }
+    return visit;
   }
 
-  static async updateVisit(visitId: string, userId: string, updates: UpdateVisitInput): Promise<VisitType | null> {
+  static async updateVisit(visitId: string, userId: string | undefined, updates: UpdateVisitInput): Promise<VisitType | null> {
     const conn = await connectToDatabase();
+    const effectiveUserId = userId || ANONYMOUS_USER;
 
     if (!conn) {
-      return MockVisitService.updateVisitByVisitId(visitId, userId, updates);
+      return MockVisitService.updateVisitByVisitId(visitId, effectiveUserId, updates);
     }
 
-    return Visit.findOneAndUpdate(
-      { visitId, userId },
+    // Try to update with userId match first, then without for anonymous
+    let result = await Visit.findOneAndUpdate(
+      { visitId, userId: effectiveUserId },
       { $set: updates },
       { new: true }
     );
+
+    if (!result) {
+      result = await Visit.findOneAndUpdate(
+        { visitId },
+        { $set: updates },
+        { new: true }
+      );
+    }
+
+    return result;
   }
 
-  static async updateVisitFromExtraction(visitId: string, userId: string, extraction: ExtractionData): Promise<VisitType | null> {
+  static async updateVisitFromExtraction(visitId: string, userId: string | undefined, extraction: ExtractionData): Promise<VisitType | null> {
     const conn = await connectToDatabase();
+    const effectiveUserId = userId || ANONYMOUS_USER;
 
-    // Transform ExtractionData to UpdateVisitInput format
-    const transformAllergy = (a: any) => ({
-      allergen: a.allergen,
-      reaction: a.reaction || undefined,
-      severity: a.severity || undefined,
-      timing: a.timing || undefined,
-      dateOrAge: a.dateOrAge || undefined,
-      treatmentUsed: a.treatmentUsed || undefined,
-      certainty: a.certainty || undefined
-    });
-
+    // Comprehensive update data including new fields
     const updateData: UpdateVisitInput = {
       patientAlias: extraction.patientAlias || undefined,
       chiefComplaint: extraction.chiefComplaint || undefined,
-      hpi: extraction.hpi ? {
-        onset: extraction.hpi.onset || undefined,
-        timeline: extraction.hpi.timeline || undefined,
-        frequency: extraction.hpi.frequency || undefined,
-        severity: extraction.hpi.severity || undefined,
-        triggers: extraction.hpi.triggers,
-        relievers: extraction.hpi.relievers,
-        exposures: extraction.hpi.exposures,
-        environment: extraction.hpi.environment,
-        foodContext: extraction.hpi.foodContext,
-        medicationContext: extraction.hpi.medicationContext
-      } : undefined,
-      allergyHistory: extraction.allergyHistory ? {
-        food: extraction.allergyHistory.food.map(transformAllergy),
-        environmental: extraction.allergyHistory.environmental.map(a => ({
-          allergen: a.allergen,
-          reaction: a.reaction || undefined,
-          seasonality: a.seasonality || undefined,
-          certainty: a.certainty || undefined
-        })),
-        stingingInsects: extraction.allergyHistory.stingingInsects.map(transformAllergy),
-        latexOther: extraction.allergyHistory.latexOther.map(transformAllergy)
-      } : undefined,
-      medications: extraction.medications.map(m => ({
-        name: m.name,
-        dosage: m.dose || undefined,
-        frequency: m.frequency || undefined,
-        indication: m.indication || undefined,
-        isActive: true,
-        response: m.response || undefined,
-        sideEffects: m.adverseEffects || undefined
-      })),
-      pmh: extraction.pmh,
-      psh: extraction.psh,
-      fh: extraction.fh,
-      sh: extraction.sh,
-      // Map ROS: Join all positives into 'constitutional' as a fallback, or just skip if too complex to map without more logic
-      ros: extraction.ros ? {
-        constitutional: extraction.ros.positives.join(', '),
-        // We put negatives in notes or ignore for now as IVisit doesn't have a clear place for general negatives list
-      } : undefined,
-      exam: extraction.exam ? {
-        general: extraction.exam.join(', ')
-      } : undefined,
-      // Map basic tests if possible, otherwise empty
-      testsAndLabs: [],
-      assessmentCandidates: extraction.assessmentCandidates.map(a => a.problem),
-      planCandidates: extraction.planCandidates.map(p => p.item),
-      needsConfirmation: extraction.needsConfirmation ? {
-        items: extraction.needsConfirmation
-      } : undefined,
-      sourceQualityFlags: extraction.sourceQualityFlags ? {
-        sourceQualityFlags: extraction.sourceQualityFlags.join(', ')
-      } : undefined,
-      atopicComorbidities: extraction.atopicComorbidities ? {
-        eczema: extraction.atopicComorbidities.eczema === 'yes',
-        asthma: extraction.atopicComorbidities.asthma === 'yes',
-        allergicRhinitis: extraction.atopicComorbidities.chronicRhinitis === 'yes',
-        foodAllergy: false,
-        drugAllergy: false
-      } : undefined,
-      extraction: extraction
+      hpi: extraction.hpi || undefined,
+      allergyHistory: extraction.allergyHistory || undefined,
+      medications: extraction.medications || [],
+      pmh: extraction.pmh || [],
+      psh: extraction.psh || [],
+      fh: extraction.fh || [],
+      sh: extraction.sh || [],
+      ros: extraction.ros || undefined,
+      exam: extraction.exam || [],
+      testsAndLabs: extraction.testsAndLabs || undefined,
+      assessmentCandidates: extraction.assessmentCandidates?.map(a => a.problem) || [],
+      planCandidates: extraction.planCandidates?.map(p => p.item) || [],
+      atopicComorbidities: extraction.atopicComorbidities || undefined,
+      extraction: extraction,
+      // New fields for billing and clinical support
+      cptCodes: extraction.cptCodes || [],
+      icd10Codes: extraction.icd10Codes || [],
+      redFlags: extraction.redFlags || [],
+      soapNote: extraction.soapNote || undefined
     };
 
     if (!conn) {
-      return MockVisitService.updateVisitByVisitId(visitId, userId, updateData);
+      return MockVisitService.updateVisitByVisitId(visitId, effectiveUserId, updateData);
     }
 
-    return Visit.findOneAndUpdate(
-      { visitId, userId },
+    let result = await Visit.findOneAndUpdate(
+      { visitId, userId: effectiveUserId },
       { $set: updateData },
       { new: true }
     );
+
+    if (!result) {
+      result = await Visit.findOneAndUpdate(
+        { visitId },
+        { $set: updateData },
+        { new: true }
+      );
+    }
+
+    return result;
   }
 
-  static async deleteVisit(visitId: string, userId: string): Promise<boolean> {
+  static async deleteVisit(visitId: string, userId?: string): Promise<boolean> {
     const conn = await connectToDatabase();
+    const effectiveUserId = userId || ANONYMOUS_USER;
 
     if (!conn) {
       return MockVisitService.deleteVisit(visitId);
     }
 
-    const result = await Visit.findOneAndDelete({ visitId, userId });
+    let result = await Visit.findOneAndDelete({ visitId, userId: effectiveUserId });
+    if (!result) {
+      result = await Visit.findOneAndDelete({ visitId });
+    }
     return !!result;
   }
 
-  static async listVisits(userId: string, page = 1, limit = 20, status?: string): Promise<{ visits: VisitType[]; total: number }> {
+  static async listVisits(userId?: string, page = 1, limit = 20, status?: string): Promise<{ visits: VisitType[]; total: number }> {
     const conn = await connectToDatabase();
+    const effectiveUserId = userId || ANONYMOUS_USER;
 
     if (!conn) {
-      return MockVisitService.listVisits(userId, page, limit, status);
+      return MockVisitService.listVisits(effectiveUserId, page, limit, status);
     }
 
     const skip = (page - 1) * limit;
-    const filter: any = { userId };
+    const filter: any = {};
+
+    // For anonymous, show all recent visits; for logged in, filter by user
+    if (userId && userId !== ANONYMOUS_USER) {
+      filter.userId = userId;
+    }
 
     if (status) {
       filter.status = status;
@@ -238,22 +245,23 @@ export class VisitService {
     return { visits, total };
   }
 
-  static async completeVisit(visitId: string, userId: string, generatedNote: string): Promise<VisitType | null> {
+  static async completeVisit(visitId: string, userId: string | undefined, generatedNote: string): Promise<VisitType | null> {
     const conn = await connectToDatabase();
+    const effectiveUserId = userId || ANONYMOUS_USER;
 
     if (!conn) {
-      const visit = await MockVisitService.findByVisitId(visitId, userId);
+      const visit = await MockVisitService.findByVisitId(visitId, effectiveUserId);
       if (!visit) return null;
 
-      return MockVisitService.updateVisit(visitId, userId, {
+      return MockVisitService.updateVisit(visitId, effectiveUserId, {
         status: 'completed',
         generatedNote,
         completedAt: new Date()
       });
     }
 
-    return Visit.findOneAndUpdate(
-      { visitId, userId },
+    let result = await Visit.findOneAndUpdate(
+      { visitId, userId: effectiveUserId },
       {
         $set: {
           status: 'completed',
@@ -263,56 +271,25 @@ export class VisitService {
       },
       { new: true }
     );
-  }
 
-  static async searchVisits(userId: string, query: string, page = 1, limit = 20): Promise<{ visits: VisitType[]; total: number }> {
-    const conn = await connectToDatabase();
-
-    if (!conn) {
-      // Simple mock search implementation
-      const userVisits = await MockVisitService.listVisits(userId, 1, 1000);
-      const searchRegex = new RegExp(query, 'i');
-      const filtered = userVisits.visits.filter(visit =>
-        visit.patientAlias?.match(searchRegex) ||
-        visit.chiefComplaint?.match(searchRegex)
+    if (!result) {
+      result = await Visit.findOneAndUpdate(
+        { visitId },
+        {
+          $set: {
+            status: 'completed',
+            generatedNote,
+            completedAt: new Date()
+          }
+        },
+        { new: true }
       );
-
-      const start = (page - 1) * limit;
-      const end = start + limit;
-      return {
-        visits: filtered.slice(start, end),
-        total: filtered.length
-      };
     }
 
-    const skip = (page - 1) * limit;
-    const searchRegex = new RegExp(query, 'i');
-
-    const filter = {
-      userId,
-      $or: [
-        { patientAlias: searchRegex },
-        { chiefComplaint: searchRegex },
-        { 'allergyHistory.food.allergen': searchRegex },
-        { 'allergyHistory.environmental.allergen': searchRegex },
-        { 'allergyHistory.stingingInsects.allergen': searchRegex },
-        { 'allergyHistory.latexOther.allergen': searchRegex }
-      ]
-    };
-
-    const [visits, total] = await Promise.all([
-      Visit.find(filter)
-        .skip(skip)
-        .limit(limit)
-        .sort({ createdAt: -1 })
-        .select('-sources.content'),
-      Visit.countDocuments(filter)
-    ]);
-
-    return { visits, total };
+    return result;
   }
 
-  static async getVisitStatistics(userId: string): Promise<{
+  static async getVisitStatistics(userId?: string): Promise<{
     totalVisits: number;
     completedVisits: number;
     draftVisits: number;
@@ -320,9 +297,10 @@ export class VisitService {
     recentVisits: VisitType[];
   }> {
     const conn = await connectToDatabase();
+    const effectiveUserId = userId || ANONYMOUS_USER;
 
     if (!conn) {
-      const userVisits = await MockVisitService.listVisits(userId, 1, 1000);
+      const userVisits = await MockVisitService.listVisits(effectiveUserId, 1, 1000);
       const completed = userVisits.visits.filter(v => v.status === 'completed');
       const draft = userVisits.visits.filter(v => v.status === 'draft');
       const archived = userVisits.visits.filter(v => v.status === 'archived');
@@ -336,12 +314,17 @@ export class VisitService {
       };
     }
 
+    const filter: any = {};
+    if (userId && userId !== ANONYMOUS_USER) {
+      filter.userId = userId;
+    }
+
     const [totalVisits, completedVisits, draftVisits, archivedVisits, recentVisits] = await Promise.all([
-      Visit.countDocuments({ userId }),
-      Visit.countDocuments({ userId, status: 'completed' }),
-      Visit.countDocuments({ userId, status: 'draft' }),
-      Visit.countDocuments({ userId, status: 'archived' }),
-      Visit.find({ userId })
+      Visit.countDocuments(filter),
+      Visit.countDocuments({ ...filter, status: 'completed' }),
+      Visit.countDocuments({ ...filter, status: 'draft' }),
+      Visit.countDocuments({ ...filter, status: 'archived' }),
+      Visit.find(filter)
         .sort({ createdAt: -1 })
         .limit(5)
         .select('-sources.content')

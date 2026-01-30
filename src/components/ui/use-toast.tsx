@@ -21,19 +21,19 @@ const ToastContext = React.createContext<ToastContextType | undefined>(undefined
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = React.useState<Toast[]>([])
 
+  const dismiss = React.useCallback((id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id))
+  }, [])
+
   const toast = React.useCallback((props: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).substr(2, 9)
     setToasts(prev => [...prev, { ...props, id }])
-    
+
     // Auto-dismiss after 5 seconds
     setTimeout(() => {
       dismiss(id)
     }, 5000)
-  }, [])
-
-  const dismiss = React.useCallback((id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id))
-  }, [])
+  }, [dismiss])
 
   return (
     <ToastContext.Provider value={{ toasts, toast, dismiss }}>

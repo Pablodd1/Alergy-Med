@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/use-toast'
-import { Plus, Eye, Trash2, Calendar, User, FileText, AlertCircle } from 'lucide-react'
+import { Plus, Eye, Trash2, Calendar, FileText, AlertCircle, ChevronRight, Activity } from 'lucide-react'
 
 interface Visit {
   _id: string
@@ -37,32 +37,30 @@ export function Dashboard({ onNewVisit, onSelectVisit }: DashboardProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const itemsPerPage = 10
-
   const { toast } = useToast()
 
-  useEffect(() => {
-    fetchVisits()
-    fetchStatistics()
-  }, [currentPage])
-
-  const fetchVisits = async () => {
+  const fetchVisits = useCallback(async () => {
     try {
       setIsLoading(true)
       const response = await fetch(`/api/visits?page=${currentPage}&limit=${itemsPerPage}`)
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch visits')
       }
-      
+
       const data = await response.json()
-      
+
       // Calculate additional properties
       const visitsWithMetadata = data.visits.map((visit: any) => ({
         ...visit,
         sourcesCount: visit.sources?.length || 0,
-        hasRedFlags: checkForRedFlags(visit)
+        hasRedFlags: !!(
+          visit.chiefComplaint?.toLowerCase().includes('severe') ||
+          visit.chiefComplaint?.toLowerCase().includes('anaphylaxis') ||
+          visit.chiefComplaint?.toLowerCase().includes('emergency')
+        )
       }))
-      
+
       setVisits(visitsWithMetadata)
       setTotalPages(Math.ceil(data.total / itemsPerPage))
     } catch (error) {
@@ -75,9 +73,9 @@ export function Dashboard({ onNewVisit, onSelectVisit }: DashboardProps) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [currentPage, itemsPerPage, toast])
 
-  const fetchStatistics = async () => {
+  const fetchStatistics = useCallback(async () => {
     try {
       const response = await fetch('/api/visits/statistics')
       if (response.ok) {
@@ -87,16 +85,12 @@ export function Dashboard({ onNewVisit, onSelectVisit }: DashboardProps) {
     } catch (error) {
       console.error('Error fetching statistics:', error)
     }
-  }
+  }, [])
 
-  const checkForRedFlags = (visit: any): boolean => {
-    // Simple red flag detection - can be enhanced
-    return !!(
-      visit.chiefComplaint?.toLowerCase().includes('severe') ||
-      visit.chiefComplaint?.toLowerCase().includes('anaphylaxis') ||
-      visit.chiefComplaint?.toLowerCase().includes('emergency')
-    )
-  }
+  useEffect(() => {
+    fetchVisits()
+    fetchStatistics()
+  }, [fetchVisits, fetchStatistics])
 
   const handleDeleteVisit = async (visitId: string) => {
     if (!confirm('Are you sure you want to delete this visit? This action cannot be undone.')) {
@@ -107,20 +101,19 @@ export function Dashboard({ onNewVisit, onSelectVisit }: DashboardProps) {
       const response = await fetch(`/api/visits/${visitId}`, {
         method: 'DELETE'
       })
-      
+
       if (!response.ok) {
         throw new Error('Failed to delete visit')
       }
-      
+
       toast({
         title: 'Success',
         description: 'Visit deleted successfully'
       })
-      
-      // Refresh the list
+
       fetchVisits()
       fetchStatistics()
-      
+
     } catch (error) {
       console.error('Error deleting visit:', error)
       toast({
@@ -133,7 +126,6 @@ export function Dashboard({ onNewVisit, onSelectVisit }: DashboardProps) {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -143,14 +135,14 @@ export function Dashboard({ onNewVisit, onSelectVisit }: DashboardProps) {
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      draft: { className: 'bg-yellow-100 text-yellow-800', label: 'Draft' },
-      completed: { className: 'bg-green-100 text-green-800', label: 'Completed' },
-      archived: { className: 'bg-gray-100 text-gray-800', label: 'Archived' }
+      draft: { className: 'bg-amber-100 text-amber-700 border-amber-200', label: 'Draft' },
+      completed: { className: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'Completed' },
+      archived: { className: 'bg-slate-100 text-slate-600 border-slate-200', label: 'Archived' }
     }
-    
+
     const variant = variants[status as keyof typeof variants]
     return (
-      <Badge className={variant.className}>
+      <Badge variant="outline" className={`${variant.className} font-semibold py-0.5 px-2`}>
         {variant.label}
       </Badge>
     )
@@ -158,127 +150,119 @@ export function Dashboard({ onNewVisit, onSelectVisit }: DashboardProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <Card>
-          <CardContent className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading visits...</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+        <p className="text-slate-500 font-medium animate-pulse">Loading clinical data...</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Visits</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{statistics.totalVisits}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <Calendar className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{statistics.completedVisits}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Drafts</CardTitle>
-            <AlertCircle className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{statistics.draftVisits}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Archived</CardTitle>
-            <User className="h-4 w-4 text-gray-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{statistics.archivedVisits}</div>
-          </CardContent>
-        </Card>
+    <div className="space-y-8 animate-fade-in">
+      {/* Header with Call-to-Action */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Clinical Dashboard</h1>
+          <p className="text-slate-500">Welcome back, Doctor. You have {statistics.draftVisits} active drafts.</p>
+        </div>
+        <Button onClick={onNewVisit} className="btn-premium h-14 px-8 shadow-blue-200">
+          <Plus className="mr-2 h-5 w-5" />
+          Start New Visit
+        </Button>
       </div>
 
-      {/* Visits List */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Recent Visits</CardTitle>
-            <CardDescription>Manage your patient visits</CardDescription>
+      {/* Statistics Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Visits', value: statistics.totalVisits, icon: FileText, color: 'blue' },
+          { label: 'Completed', value: statistics.completedVisits, icon: Activity, color: 'emerald' },
+          { label: 'Pending Drafts', value: statistics.draftVisits, icon: AlertCircle, color: 'amber' },
+          { label: 'Archived', value: statistics.archivedVisits, icon: Calendar, color: 'slate' },
+        ].map((stat, i) => (
+          <Card key={i} className="border-none shadow-premium overflow-hidden">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className={`p-2 rounded-lg bg-${stat.color}-50`}>
+                  <stat.icon className={`h-5 w-5 text-${stat.color}-600`} />
+                </div>
+              </div>
+              <div className="text-2xl font-bold text-slate-900">{stat.value}</div>
+              <p className="text-sm font-medium text-slate-500">{stat.label}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Main Content Area */}
+      <Card className="border-none shadow-premium overflow-hidden">
+        <CardHeader className="border-b border-slate-50 bg-slate-50/50">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl">Recent Case History</CardTitle>
+            <div className="flex items-center text-sm text-slate-400">
+              Showing {visits.length} of {statistics.totalVisits} visits
+            </div>
           </div>
-          <Button onClick={onNewVisit} size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            New Visit
-          </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {visits.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500 mb-4">No visits found</p>
-              <Button onClick={onNewVisit} variant="outline">
-                Create New Visit
+            <div className="text-center py-20 px-4">
+              <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="h-10 w-10 text-slate-300" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900">No visits found</h3>
+              <p className="text-slate-500 mb-6 max-w-xs mx-auto">Create your first patient visit to start generating AI-powered clinical notes.</p>
+              <Button onClick={onNewVisit} variant="outline" className="rounded-xl border-2 px-8 h-12">
+                Create First Visit
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="divide-y divide-slate-100">
               {visits.map((visit) => (
-                <div key={visit._id} className="border rounded-lg p-4 hover:bg-gray-50">
+                <div
+                  key={visit._id}
+                  className="group p-6 hover:bg-blue-50/50 transition-colors cursor-pointer"
+                  onClick={() => onSelectVisit(visit.visitId)}
+                >
                   <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <h3 className="font-medium">{visit.patientAlias}</h3>
+                    <div className="flex-1 min-w-0 pr-4">
+                      <div className="flex items-center flex-wrap gap-2 mb-1">
+                        <h3 className="font-bold text-slate-900 text-lg truncate">{visit.patientAlias}</h3>
+                        {getStatusBadge(visit.status)}
                         {visit.hasRedFlags && (
-                          <Badge variant="destructive" className="text-xs">
-                            ⚠️ Red Flags
+                          <Badge variant="destructive" className="bg-red-50 text-red-600 border-red-100 shadow-none">
+                            High Priority
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600">{visit.chiefComplaint}</p>
-                      <div className="flex items-center space-x-4 text-xs text-gray-500">
-                        <span className="flex items-center">
-                          <Calendar className="mr-1 h-3 w-3" />
+                      <p className="text-slate-600 text-base line-clamp-1 mb-3">{visit.chiefComplaint}</p>
+
+                      <div className="flex items-center gap-6 text-sm text-slate-400">
+                        <span className="flex items-center font-medium">
+                          <Calendar className="mr-2 h-4 w-4" />
                           {formatDate(visit.createdAt)}
                         </span>
-                        <span className="flex items-center">
-                          <FileText className="mr-1 h-3 w-3" />
-                          {visit.sourcesCount} sources
+                        <span className="flex items-center font-medium">
+                          <Activity className="mr-2 h-4 w-4" />
+                          {visit.sourcesCount} Clinical Sources
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      {getStatusBadge(visit.status)}
+
+                    <div className="flex items-center gap-2">
                       <Button
-                        onClick={() => onSelectVisit(visit.visitId)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteVisit(visit.visitId);
+                        }}
                         variant="ghost"
-                        size="sm"
+                        size="icon"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-red-500"
                       >
-                        <Eye className="h-4 w-4" />
+                        <Trash2 className="h-5 w-5" />
                       </Button>
-                      <Button
-                        onClick={() => handleDeleteVisit(visit.visitId)}
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="bg-blue-50 p-2 rounded-xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                        <ChevronRight className="h-5 w-5" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -288,25 +272,27 @@ export function Dashboard({ onNewVisit, onSelectVisit }: DashboardProps) {
         </CardContent>
       </Card>
 
-      {/* Pagination */}
+      {/* Pagination Container */}
       {totalPages > 1 && (
-        <div className="flex justify-center space-x-2">
+        <div className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
           <Button
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
-            variant="outline"
+            variant="ghost"
+            className="rounded-xl px-4"
           >
-            Previous
+            ← Previous
           </Button>
-          <span className="flex items-center px-4 text-sm text-gray-600">
-            Page {currentPage} of {totalPages}
-          </span>
+          <div className="text-sm font-semibold text-slate-600">
+            Page <span className="text-blue-600">{currentPage}</span> of {totalPages}
+          </div>
           <Button
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
-            variant="outline"
+            variant="ghost"
+            className="rounded-xl px-4"
           >
-            Next
+            Next →
           </Button>
         </div>
       )}

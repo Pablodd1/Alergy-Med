@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
@@ -29,22 +29,13 @@ export function NoteModule({ visitId, onBack }: NoteModuleProps) {
   const [note, setNote] = useState<string>('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [isCopying, setIsCopying] = useState(false)
-  
+
   // Simple toast function for notifications
   const toast = (message: string, type: 'success' | 'error' = 'success') => {
     alert(message) // Simple alert for now, can be replaced with proper toast later
   }
 
-  useEffect(() => {
-    const extractionJson = sessionStorage.getItem(`extraction_${visitId}`)
-    if (extractionJson) {
-      const parsed = JSON.parse(extractionJson)
-      setExtraction(parsed)
-      generateNote(parsed)
-    }
-  }, [visitId])
-
-  const generateNote = async (extractionData: ExtractionData) => {
+  const generateNote = useCallback(async (extractionData: ExtractionData) => {
     try {
       setIsGenerating(true)
 
@@ -74,7 +65,16 @@ export function NoteModule({ visitId, onBack }: NoteModuleProps) {
     } finally {
       setIsGenerating(false)
     }
-  }
+  }, [visitId])
+
+  useEffect(() => {
+    const extractionJson = sessionStorage.getItem(`extraction_${visitId}`)
+    if (extractionJson) {
+      const parsed = JSON.parse(extractionJson)
+      setExtraction(parsed)
+      generateNote(parsed)
+    }
+  }, [visitId, generateNote])
 
   const copyToClipboard = async () => {
     try {
@@ -101,14 +101,14 @@ export function NoteModule({ visitId, onBack }: NoteModuleProps) {
           doc.addPage()
           yPosition = margin
         }
-        
+
         doc.setFontSize(fontSize)
         if (isBold) {
           doc.setFont('helvetica', 'bold')
         } else {
           doc.setFont('helvetica', 'normal')
         }
-        
+
         const lines = doc.splitTextToSize(text, doc.internal.pageSize.width - 2 * margin)
         doc.text(lines, margin, yPosition)
         yPosition += lines.length * fontSize * 0.4
@@ -157,7 +157,7 @@ export function NoteModule({ visitId, onBack }: NoteModuleProps) {
   const downloadDOCX = () => {
     try {
       const sections: any[] = []
-      
+
       // Title
       sections.push(
         new Paragraph({
@@ -377,17 +377,17 @@ export function NoteModule({ visitId, onBack }: NoteModuleProps) {
                 </>
               )}
             </Button>
-            
+
             <Button onClick={downloadPDF} variant="outline">
               <Download className="mr-2 h-4 w-4" />
               Download PDF
             </Button>
-            
+
             <Button onClick={downloadDOCX} variant="outline">
               <FileText className="mr-2 h-4 w-4" />
               Download DOCX
             </Button>
-            
+
             <Button onClick={regenerateNote} disabled={isGenerating} variant="outline">
               {isGenerating ? (
                 <>
@@ -475,7 +475,7 @@ export function NoteModule({ visitId, onBack }: NoteModuleProps) {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Review
         </Button>
-        
+
         <div className="text-sm text-gray-500">
           Visit ID: {visitId}
         </div>

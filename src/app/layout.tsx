@@ -1,37 +1,44 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { ToastProvider } from '@/components/ui/use-toast'
-import { SessionProvider } from '@/components/providers/session-provider'
-import { getServerSession } from 'next-auth/next'
-import { authOptions } from '@/lib/auth'
 import { Toaster } from '@/components/ui/toaster'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter'
+})
 
 export const metadata: Metadata = {
-  title: 'Allergy Scribe (Personal)',
-  description: 'Comprehensive allergist medical note generation for single-user clinical documentation',
+  title: 'Allergy Scribe | AI Clinical Documentation',
+  description: 'Professional AI-powered medical note generation for allergists and internal medicine providers. Generate SOAP notes, extract ICD-10 and CPT codes, and identify clinical red flags.',
+  keywords: ['allergy', 'soap note', 'medical documentation', 'icd-10', 'cpt codes', 'allergist', 'clinical notes'],
+  authors: [{ name: 'Allergy Scribe' }],
 }
 
-export default async function RootLayout({
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: '#2563eb',
+}
+
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  console.log('Fetching session in RootLayout')
-  const session = await getServerSession(authOptions)
-  console.log('Session fetch result:', session ? 'User logged in' : 'No session')
-
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <SessionProvider session={session}>
-          <ToastProvider>
-            {children}
-            <Toaster />
-          </ToastProvider>
-        </SessionProvider>
+    <html lang="en" className={inter.variable}>
+      <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+      </head>
+      <body className={`${inter.className} antialiased`}>
+        <ToastProvider>
+          {children}
+          <Toaster />
+        </ToastProvider>
       </body>
     </html>
   )
