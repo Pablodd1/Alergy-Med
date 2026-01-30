@@ -9,7 +9,7 @@ if (!MONGODB_URI) {
 
 interface MongooseCache {
   conn: Mongoose | null;
-  promise: Promise<Mongoose> | null;
+  promise: Promise<Mongoose | null> | null;
 }
 
 declare global {
@@ -22,7 +22,7 @@ if (!cached) {
   cached = global.mongoose = { conn: null, promise: null };
 }
 
-async function connectToDatabase() {
+async function connectToDatabase(): Promise<Mongoose | null> {
   // If no MongoDB URI is provided, use mock database
   if (!MONGODB_URI) {
     console.log('Using mock database for development');

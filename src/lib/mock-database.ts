@@ -38,7 +38,7 @@ export class MockDatabase {
   }
 
   static async saveVisit(visit: IVisit): Promise<void> {
-    visits.set(visit._id, visit);
+    visits.set(visit._id.toString(), visit);
   }
 
   static async getVisit(id: string): Promise<IVisit | null> {

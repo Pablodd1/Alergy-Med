@@ -1,6 +1,22 @@
 import { User, IUser } from '@/models/User';
 import connectToDatabase from '@/lib/mongodb';
 import { MockDatabase } from '@/lib/mock-database';
+import { Types } from 'mongoose';
+
+// Simple interface for mock users (without Mongoose Document methods)
+interface IMockUser {
+  _id: string;
+  username: string;
+  password: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'user' | 'admin';
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  comparePassword(candidatePassword: string): Promise<boolean>;
+}
 
 export interface CreateUserInput {
   username: string;
@@ -19,7 +35,7 @@ export interface UpdateUserInput {
 }
 
 export class UserService {
-  static async createUser(input: CreateUserInput): Promise<IUser> {
+  static async createUser(input: CreateUserInput): Promise<IUser | IMockUser> {
     const conn = await connectToDatabase();
     
     if (!conn) {
@@ -29,7 +45,7 @@ export class UserService {
         throw new Error('Username already exists');
       }
 
-      const mockUser: IUser = {
+      const mockUser: IMockUser = {
         _id: `user_${Date.now()}`,
         username: input.username,
         password: input.password, // This should be hashed
@@ -65,7 +81,7 @@ export class UserService {
     return user;
   }
 
-  static async findByUsername(username: string): Promise<IUser | null> {
+  static async findByUsername(username: string): Promise<IUser | IMockUser | null> {
     const conn = await connectToDatabase();
     
     if (!conn) {
@@ -75,7 +91,7 @@ export class UserService {
     return User.findOne({ username });
   }
 
-  static async findById(id: string): Promise<IUser | null> {
+  static async findById(id: string): Promise<IUser | IMockUser | null> {
     const conn = await connectToDatabase();
     
     if (!conn) {
@@ -85,7 +101,7 @@ export class UserService {
     return User.findById(id);
   }
 
-  static async updateUser(id: string, updates: UpdateUserInput): Promise<IUser | null> {
+  static async updateUser(id: string, updates: UpdateUserInput): Promise<IUser | IMockUser | null> {
     const conn = await connectToDatabase();
     
     if (!conn) {
@@ -112,12 +128,12 @@ export class UserService {
     return !!result;
   }
 
-  static async listUsers(page = 1, limit = 20): Promise<{ users: IUser[]; total: number }> {
+  static async listUsers(page = 1, limit = 20): Promise<{ users: (IUser | IMockUser)[]; total: number }> {
     const conn = await connectToDatabase();
     
     if (!conn) {
       // Mock implementation - return all users
-      const allUsers = Array.from((MockDatabase as any).users.values?.() || []);
+      const allUsers = Array.from((MockDatabase as any).users.values?.() || []) as IMockUser[];
       const start = (page - 1) * limit;
       const end = start + limit;
       return { users: allUsers.slice(start, end), total: allUsers.length };
@@ -132,7 +148,7 @@ export class UserService {
     return { users, total };
   }
 
-  static async validatePassword(username: string, password: string): Promise<IUser | null> {
+  static async validatePassword(username: string, password: string): Promise<IUser | IMockUser | null> {
     const user = await this.findByUsername(username);
     if (!user || !user.isActive) {
       return null;

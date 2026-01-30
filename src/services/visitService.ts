@@ -3,6 +3,9 @@ import connectToDatabase from '@/lib/mongodb';
 import { ExtractionData } from '@/types/schemas';
 import { MockVisitService } from '@/lib/mock-visit-service';
 
+// Union type for both real and mock visits
+type VisitType = IVisit | import('@/lib/mock-visit-service').IMockVisit;
+
 export interface CreateVisitInput {
   userId: string;
   visitId: string;
@@ -51,7 +54,7 @@ export interface UpdateVisitInput {
 }
 
 export class VisitService {
-  static async createVisit(input: CreateVisitInput): Promise<IVisit> {
+  static async createVisit(input: CreateVisitInput): Promise<VisitType> {
     const conn = await connectToDatabase();
     
     if (!conn) {
@@ -72,7 +75,7 @@ export class VisitService {
     return visit;
   }
 
-  static async findByVisitId(visitId: string, userId: string): Promise<IVisit | null> {
+  static async findByVisitId(visitId: string, userId: string): Promise<VisitType | null> {
     const conn = await connectToDatabase();
     
     if (!conn) {
@@ -82,7 +85,7 @@ export class VisitService {
     return Visit.findOne({ visitId, userId });
   }
 
-  static async findById(id: string, userId: string): Promise<IVisit | null> {
+  static async findById(id: string, userId: string): Promise<VisitType | null> {
     const conn = await connectToDatabase();
     
     if (!conn) {
@@ -92,7 +95,7 @@ export class VisitService {
     return Visit.findOne({ _id: id, userId });
   }
 
-  static async updateVisit(id: string, userId: string, updates: UpdateVisitInput): Promise<IVisit | null> {
+  static async updateVisit(id: string, userId: string, updates: UpdateVisitInput): Promise<VisitType | null> {
     const conn = await connectToDatabase();
     
     if (!conn) {
@@ -106,7 +109,7 @@ export class VisitService {
     );
   }
 
-  static async updateVisitFromExtraction(visitId: string, userId: string, extraction: ExtractionData): Promise<IVisit | null> {
+  static async updateVisitFromExtraction(visitId: string, userId: string, extraction: ExtractionData): Promise<VisitType | null> {
     const conn = await connectToDatabase();
 
     // Transform ExtractionData to UpdateVisitInput format
@@ -209,7 +212,7 @@ export class VisitService {
     return !!result;
   }
 
-  static async listVisits(userId: string, page = 1, limit = 20, status?: string): Promise<{ visits: IVisit[]; total: number }> {
+  static async listVisits(userId: string, page = 1, limit = 20, status?: string): Promise<{ visits: VisitType[]; total: number }> {
     const conn = await connectToDatabase();
     
     if (!conn) {
@@ -235,7 +238,7 @@ export class VisitService {
     return { visits, total };
   }
 
-  static async completeVisit(visitId: string, userId: string, generatedNote: string): Promise<IVisit | null> {
+  static async completeVisit(visitId: string, userId: string, generatedNote: string): Promise<VisitType | null> {
     const conn = await connectToDatabase();
     
     if (!conn) {
@@ -262,7 +265,7 @@ export class VisitService {
     );
   }
 
-  static async searchVisits(userId: string, query: string, page = 1, limit = 20): Promise<{ visits: IVisit[]; total: number }> {
+  static async searchVisits(userId: string, query: string, page = 1, limit = 20): Promise<{ visits: VisitType[]; total: number }> {
     const conn = await connectToDatabase();
     
     if (!conn) {
@@ -314,7 +317,7 @@ export class VisitService {
     completedVisits: number;
     draftVisits: number;
     archivedVisits: number;
-    recentVisits: IVisit[];
+    recentVisits: VisitType[];
   }> {
     const conn = await connectToDatabase();
     
@@ -329,7 +332,7 @@ export class VisitService {
         completedVisits: completed.length,
         draftVisits: draft.length,
         archivedVisits: archived.length,
-        recentVisits: userVisits.visits.slice(0, 5)
+        recentVisits: userVisits.visits.slice(0, 5) as VisitType[]
       };
     }
 
