@@ -9,6 +9,7 @@ import { NoteModule } from '@/components/note-module-db'
 import { Dashboard } from '@/components/dashboard'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { DebugPanel } from '@/components/debug-panel'
 
 export type Step = 'capture' | 'review' | 'note'
 
@@ -200,6 +201,7 @@ export default function Home() {
           </>
         )}
       </main>
+      <DebugPanel />
     </div>
   )
 }
