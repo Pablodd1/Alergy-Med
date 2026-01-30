@@ -99,7 +99,7 @@ export function DebugPanel() {
                         <div className="space-y-1">
                             <p className="text-xs font-bold text-blue-800">Pro-Tip</p>
                             <p className="text-[10px] text-blue-700 leading-tight">
-                                If transcription fails with 500, check Vercel Logs for "OPENAI_API_KEY missing".
+                                If transcription fails with 500, check Vercel Logs for &quot;OPENAI_API_KEY missing&quot;.
                             </p>
                         </div>
                     </div>
