@@ -58,19 +58,18 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
           const base64Data = reader.result as string
 
           try {
+            const formData = new FormData()
+            formData.append('audio', audioBlob, 'audio.wav')
+            formData.append('visitId', visitId)
+
             const response = await fetch('/api/transcribe', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                audio: base64Data.split(',')[1], // Remove data URL prefix
-                visitId
-              })
+              body: formData
             })
 
             if (!response.ok) {
-              throw new Error('Transcription failed')
+              const errorData = await response.json()
+              throw new Error(errorData.error || 'Transcription failed')
             }
 
             const result = await response.json()
@@ -78,7 +77,7 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
             const newSource: CaptureSource = {
               id: Date.now().toString(),
               type: 'audio',
-              content: result.transcription,
+              content: result.text, // Backend returns 'text', not 'transcription'
               metadata: {
                 timestamp: new Date().toISOString(),
                 segments: result.segments
@@ -134,60 +133,68 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
   }
 
   // Camera capture
-  const captureFromCamera = () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.capture = 'environment'
+  const processCameraImage = async (file: File) => {
+    try {
+      const formData = new FormData()
+      formData.append('image', file) // Backend expects 'image', not 'file'
+      formData.append('visitId', visitId)
 
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (!file) return
+      const response = await fetch('/api/ocr', {
+        method: 'POST',
+        body: formData
+      })
 
-      try {
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('visitId', visitId)
-
-        const response = await fetch('/api/ocr', {
-          method: 'POST',
-          body: formData
-        })
-
-        if (!response.ok) {
-          throw new Error('OCR processing failed')
-        }
-
-        const result = await response.json()
-
-        const newSource: CaptureSource = {
-          id: Date.now().toString(),
-          type: 'image',
-          content: result.text,
-          metadata: {
-            filename: file.name,
-            timestamp: new Date().toISOString(),
-            confidence: result.confidence
-          }
-        }
-
-        setSources(prev => [...prev, newSource])
-
-        toast({
-          title: 'Image Processed',
-          description: `Extracted ${result.text.length} characters from image`
-        })
-
-      } catch (error) {
-        toast({
-          title: 'Processing Error',
-          description: 'Failed to process image. Please try again.',
-          variant: 'destructive'
-        })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'OCR processing failed')
       }
-    }
 
-    input.click()
+      const result = await response.json()
+
+      const newSource: CaptureSource = {
+        id: Date.now().toString(),
+        type: 'image',
+        content: result.text,
+        metadata: {
+          filename: file.name,
+          timestamp: new Date().toISOString(),
+          confidence: result.confidence
+        }
+      }
+
+      setSources(prev => [...prev, newSource])
+
+      toast({
+        title: 'Image Processed',
+        description: `Extracted ${result.text.length} characters from image`
+      })
+
+    } catch (error) {
+      console.error('Camera capture error:', error)
+      toast({
+        title: 'Processing Error',
+        description: error instanceof Error ? error.message : 'Failed to process image. Please try again.',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const triggerCamera = () => {
+    const input = document.getElementById('camera-upload')
+    if (input) {
+      input.click()
+    } else {
+      // Fallback for environment where DOM might not be fully ready
+      const fallbackInput = document.createElement('input')
+      fallbackInput.type = 'file'
+      fallbackInput.accept = 'image/*'
+      fallbackInput.capture = 'environment'
+      fallbackInput.onchange = (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0]
+        if (file) processCameraImage(file)
+      }
+      fallbackInput.click()
+    }
   }
 
   // File upload
@@ -371,7 +378,7 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
               )}
             </Button>
 
-            <Button onClick={captureFromCamera} className="h-16 text-sm">
+            <Button onClick={triggerCamera} className="h-16 text-sm">
               <Camera className="mr-2 h-5 w-5" />
               Take Photo
             </Button>
@@ -409,6 +416,21 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
             multiple
             accept=".pdf,.docx,.doc,.txt,.jpg,.jpeg,.png,.gif"
             onChange={handleFileUpload}
+            className="hidden"
+          />
+
+          <input
+            id="camera-upload"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) {
+                // We'll call a function that processes this file for OCR
+                processCameraImage(file)
+              }
+            }}
             className="hidden"
           />
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import pdf from 'pdf-parse'
 import mammoth from 'mammoth'
 import { ocrResultSchema } from '@/types/schemas'
+import { OCRService } from '@/services/ocrService'
 
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
@@ -28,26 +29,7 @@ async function extractTextFromImage(buffer: Buffer): Promise<{
   confidence: number
 }> {
   try {
-    // Call the OCR API internally
-    const formData = new FormData()
-    const file = new File([buffer as any], 'image.png', { type: 'image/png' })
-    formData.append('image', file)
-    formData.append('visitId', 'temp')
-
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/ocr`, {
-      method: 'POST',
-      body: formData
-    })
-
-    if (!response.ok) {
-      throw new Error('OCR processing failed')
-    }
-
-    const result = await response.json()
-    return {
-      text: result.text,
-      confidence: result.confidence
-    }
+    return await OCRService.processImage(buffer)
   } catch (error) {
     console.error('Image OCR error:', error)
     throw new Error('Failed to extract text from image')
@@ -122,16 +104,11 @@ export async function POST(request: NextRequest) {
     // Validate the result
     const validatedResult = ocrResultSchema.parse(result)
 
-    // Here you would typically save to database
-    // For now, we'll just return the result
-
     return NextResponse.json(validatedResult)
 
   } catch (error) {
     console.error('File processing error:', error)
-    
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    
     return NextResponse.json(
       { error: `Failed to process file: ${errorMessage}` },
       { status: 500 }
