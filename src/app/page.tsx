@@ -32,10 +32,9 @@ export default function Home() {
     )
   }
 
-  if (!session) {
-    router.push('/auth/signin')
-    return null
-  }
+  // Bypass login for demo
+  const isDemo = !session;
+  const currentUserId = session?.user?.id || 'demo-user';
 
   const steps = [
     { id: 'capture', name: 'Step 1: Capture', description: 'Record audio, photos, documents' },
@@ -94,8 +93,13 @@ export default function Home() {
               {showDashboard ? 'Allergy Scribe Dashboard' : 'Allergy Scribe'}
             </h1>
             <div className="flex items-center space-x-4">
-              {session.user?.username && (
-                <span className="text-sm text-gray-500">Welcome, {session.user.username}</span>
+              {session?.user?.username ? (
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-gray-500">Welcome, {session.user.username}</span>
+                  <Button variant="ghost" size="sm" onClick={() => router.push('/api/auth/signout')}>Sign Out</Button>
+                </div>
+              ) : (
+                <Button variant="ghost" size="sm" onClick={() => router.push('/auth/signin')}>Sign In</Button>
               )}
               {visitId && !showDashboard && (
                 <>
@@ -113,6 +117,16 @@ export default function Home() {
           </div>
         </div>
       </header>
+
+      {isDemo && (
+        <div className="bg-yellow-50 border-b border-yellow-200 py-2">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <p className="text-sm text-yellow-800 text-center font-medium">
+              Demo Mode Active - You are using the app as a guest. All data is saved to a shared demo account.
+            </p>
+          </div>
+        </div>
+      )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {showDashboard ? (
@@ -161,13 +175,13 @@ export default function Home() {
                 {/* Main Content */}
                 <div className="space-y-6">
                   {currentStep === 'capture' && (
-                    <CaptureModule visitId={visitId} userId={session.user?.id || 'demo-user'} onNext={() => setCurrentStep('review')} />
+                    <CaptureModule visitId={visitId} userId={currentUserId} onNext={() => setCurrentStep('review')} />
                   )}
 
                   {currentStep === 'review' && (
                     <ReviewModule
                       visitId={visitId}
-                      userId={session.user?.id || 'demo-user'}
+                      userId={currentUserId}
                       onBack={() => setCurrentStep('capture')}
                       onNext={() => setCurrentStep('note')}
                     />
@@ -176,7 +190,7 @@ export default function Home() {
                   {currentStep === 'note' && (
                     <NoteModule
                       visitId={visitId}
-                      userId={session.user?.id || 'demo-user'}
+                      userId={currentUserId}
                       onBack={() => setCurrentStep('review')}
                     />
                   )}

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { extractionSchema, ExtractionData } from '@/types/schemas'
 import { zodToJsonSchema } from 'zod-to-json-schema'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
 import { VisitService } from '@/services/visitService'
 
 const getOpenAIClient = () => {
@@ -171,8 +173,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get user from session (you'll need to implement proper session handling)
-    const userId = 'demo-user'; // This should come from the session
+    // Get user from session
+    const session = await getServerSession(authOptions)
+    const userId = session?.user?.id || 'demo-user';
 
     // Find the visit in database
     const visit = await VisitService.findByVisitId(visitId, userId);

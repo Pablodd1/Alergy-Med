@@ -9,12 +9,10 @@ export const revalidate = 0
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const userId = session?.user?.id || 'demo-user'
 
-    const statistics = await VisitService.getVisitStatistics(session.user.id)
-    
+    const statistics = await VisitService.getVisitStatistics(userId)
+
     return NextResponse.json(statistics)
   } catch (error) {
     console.error('Failed to fetch visit statistics:', error)
