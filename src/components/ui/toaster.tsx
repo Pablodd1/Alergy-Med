@@ -4,7 +4,23 @@ import * as React from 'react'
 import { ToastProvider, useToast } from './use-toast'
 
 export function Toaster() {
-  const { toasts, dismiss } = useToast()
+  let toasts: any[] = []
+  let dismiss = (id: string) => {}
+  
+  try {
+    const toastContext = useToast()
+    toasts = toastContext.toasts
+    dismiss = toastContext.dismiss
+  } catch (error) {
+    // If useToast fails, it means we're not inside a ToastProvider
+    // Return an empty toaster to prevent crashes
+    console.warn('Toaster: useToast not available, rendering empty toaster')
+    return null
+  }
+
+  if (!toasts || toasts.length === 0) {
+    return null
+  }
 
   return (
     <div className="fixed top-0 right-0 z-50 p-4 space-y-2">
