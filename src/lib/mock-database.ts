@@ -1,8 +1,22 @@
-import { IUser } from '@/models/User';
 import { IVisit } from '@/models/Visit';
 
+// Simple user interface for mock database (without Mongoose Document methods)
+interface IMockUser {
+  _id: string;
+  username: string;
+  password: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'user' | 'admin';
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  comparePassword(candidatePassword: string): Promise<boolean>;
+}
+
 // Simple in-memory storage for development/demo purposes
-const users = new Map<string, IUser>();
+const users = new Map<string, IMockUser>();
 const visits = new Map<string, IVisit>();
 
 export class MockDatabase {
@@ -11,15 +25,15 @@ export class MockDatabase {
     console.log('Connected to mock database');
   }
 
-  static async saveUser(user: IUser): Promise<void> {
+  static async saveUser(user: IMockUser): Promise<void> {
     users.set(user._id, user);
   }
 
-  static async getUser(id: string): Promise<IUser | null> {
+  static async getUser(id: string): Promise<IMockUser | null> {
     return users.get(id) || null;
   }
 
-  static async getUserByUsername(username: string): Promise<IUser | null> {
+  static async getUserByUsername(username: string): Promise<IMockUser | null> {
     return Array.from(users.values()).find(u => u.username === username) || null;
   }
 
@@ -37,7 +51,7 @@ export class MockDatabase {
 }
 
 // For demo purposes, create a default user
-const defaultUser: IUser = {
+const defaultUser: IMockUser = {
   _id: 'demo-user-id',
   username: 'demo',
   password: '$2a$12$LQv3c1yqBWLHxk96U1eC6uO8OqWqQ2Yx4z3RZlZx5lZx5lZx5lZx5',
