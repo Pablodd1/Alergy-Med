@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { extractionSchema, ExtractionData } from '@/types/schemas'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+const getOpenAIClient = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('The OPENAI_API_KEY environment variable is missing or empty');
+  }
+  return new OpenAI({ apiKey });
+}
 
 const noteGenerationPrompt = `You are an expert allergist creating comprehensive medical documentation. Generate a complete allergy consultation note based on the extracted medical information.
 
@@ -120,6 +124,7 @@ export async function POST(request: NextRequest) {
     const validatedExtraction: ExtractionData = extractionSchema.parse(extraction)
 
     // Call OpenAI to generate the note
+    const openai = getOpenAIClient()
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
@@ -148,7 +153,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Note generation error:', error)
-    
+
     if (error instanceof Error && error.message.includes('API key')) {
       return NextResponse.json(
         { error: 'OpenAI API key not configured' },

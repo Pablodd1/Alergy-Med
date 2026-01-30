@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { transcriptionResultSchema } from '@/types/schemas'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+const getOpenAIClient = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('The OPENAI_API_KEY environment variable is missing or empty');
+  }
+  return new OpenAI({ apiKey });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,6 +27,7 @@ export async function POST(request: NextRequest) {
     const audioBuffer = Buffer.from(await audioFile.arrayBuffer())
 
     // Transcribe using OpenAI Whisper
+    const openai = getOpenAIClient()
     const response = await openai.audio.transcriptions.create({
       file: new File([audioBuffer], 'audio.wav', { type: 'audio/wav' }),
       model: 'whisper-1',
@@ -52,7 +57,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Transcription error:', error)
-    
+
     if (error instanceof Error && error.message.includes('API key')) {
       return NextResponse.json(
         { error: 'OpenAI API key not configured' },

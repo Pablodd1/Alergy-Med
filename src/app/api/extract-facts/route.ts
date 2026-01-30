@@ -4,9 +4,13 @@ import { extractionSchema, ExtractionData } from '@/types/schemas'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import { VisitService } from '@/services/visitService'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+const getOpenAIClient = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('The OPENAI_API_KEY environment variable is missing or empty');
+  }
+  return new OpenAI({ apiKey });
+}
 
 const extractionPrompt = `You are an expert medical AI assistant specializing in allergy and immunology. Your task is to extract structured medical information from clinical notes, patient interviews, and medical documents related to allergy patients.
 
@@ -197,6 +201,7 @@ export async function POST(request: NextRequest) {
     const jsonSchema = zodToJsonSchema(extractionSchema)
 
     // Call OpenAI for extraction
+    const openai = getOpenAIClient()
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
@@ -251,7 +256,7 @@ export async function POST(request: NextRequest) {
       ...(extractedData.allergyHistory?.latexOther || [])
     ]
 
-    const hasSevereAllergy = allAllergies.some((allergy: any) => 
+    const hasSevereAllergy = allAllergies.some((allergy: any) =>
       allergy.severity && ['severe', 'life-threatening', 'anaphylaxis'].includes(allergy.severity.toLowerCase())
     )
 
@@ -264,7 +269,7 @@ export async function POST(request: NextRequest) {
 
     // Update the visit in database with extracted data
     const updatedVisit = await VisitService.updateVisitFromExtraction(visitId, userId, validatedData);
-    
+
     if (!updatedVisit) {
       return NextResponse.json(
         { error: 'Failed to update visit with extracted data' },
@@ -279,7 +284,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Extraction error:', error)
-    
+
     if (error instanceof Error && error.message.includes('API key')) {
       return NextResponse.json(
         { error: 'OpenAI API key not configured' },
