@@ -51,15 +51,16 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
       }
 
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' })
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
         const reader = new FileReader()
 
         reader.onloadend = async () => {
-          const base64Data = reader.result as string
+          const base64Data = (reader.result as string).split(',')[1]
 
           try {
+            // We use Base64 as a backup if FormData/Blob is being mangled by the browser/Vercel
             const formData = new FormData()
-            formData.append('audio', audioBlob, 'audio.wav')
+            formData.append('audio', audioBlob, 'audio.webm')
             formData.append('visitId', visitId)
 
             const response = await fetch('/api/transcribe', {
@@ -77,7 +78,7 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
             const newSource: CaptureSource = {
               id: Date.now().toString(),
               type: 'audio',
-              content: result.text, // Backend returns 'text', not 'transcription'
+              content: result.text,
               metadata: {
                 timestamp: new Date().toISOString(),
                 segments: result.segments
@@ -88,13 +89,14 @@ export function CaptureModule({ visitId, userId, onNext }: CaptureModuleProps) {
 
             toast({
               title: 'Audio Transcribed',
-              description: `Transcribed ${result.transcription.length} characters`
+              description: `Extracted ${result.text.length} characters of text.`
             })
 
           } catch (error) {
+            console.error('Transcription error:', error)
             toast({
               title: 'Transcription Error',
-              description: 'Failed to transcribe audio. Please try again.',
+              description: error instanceof Error ? error.message : 'Failed to transcribe audio. Please try again.',
               variant: 'destructive'
             })
           }

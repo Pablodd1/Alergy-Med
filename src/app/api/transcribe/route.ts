@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     // Transcribe using OpenAI Whisper
     const openai = getOpenAIClient()
     const response = await openai.audio.transcriptions.create({
-      file: new File([audioBuffer], 'audio.wav', { type: 'audio/wav' }),
+      file: new File([audioBuffer], 'audio.webm', { type: 'audio/webm' }),
       model: 'whisper-1',
       response_format: 'verbose_json',
       timestamp_granularities: ['segment'],
