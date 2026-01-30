@@ -15,12 +15,24 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        // Try to validate against database
         const user = await UserService.validatePassword(credentials.username, credentials.password)
-        
+
         if (user) {
           return {
             id: user._id.toString(),
             username: user.username,
+          }
+        }
+
+        // Fallback to environment variables if database check fails
+        const defaultUsername = process.env.DEFAULT_USERNAME || 'allergist';
+        const defaultPassword = process.env.DEFAULT_PASSWORD || 'allergy123';
+
+        if (credentials.username === defaultUsername && credentials.password === defaultPassword) {
+          return {
+            id: 'default-admin',
+            username: defaultUsername,
           }
         }
 
