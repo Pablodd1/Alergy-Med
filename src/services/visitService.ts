@@ -99,7 +99,7 @@ export class VisitService {
     const conn = await connectToDatabase();
 
     if (!conn) {
-      return MockVisitService.updateVisit(visitId, userId, updates);
+      return MockVisitService.updateVisitByVisitId(visitId, userId, updates);
     }
 
     return Visit.findOneAndUpdate(

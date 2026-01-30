@@ -41,6 +41,8 @@ export async function POST(request: NextRequest) {
 
     const visitId = `visit_${Date.now()}`
 
+    console.log('Creating visit with:', { userId, visitId, patientAlias, chiefComplaint })
+
     const visit = await VisitService.createVisit({
       userId,
       visitId,
@@ -48,6 +50,8 @@ export async function POST(request: NextRequest) {
       chiefComplaint,
       sources
     })
+
+    console.log('Visit created successfully:', { visitId, _id: (visit as any)._id })
 
     return NextResponse.json({ visit, visitId })
   } catch (error) {

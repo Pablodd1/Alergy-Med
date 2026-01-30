@@ -209,6 +209,8 @@ export class MockVisitService {
     };
 
     visits.set(visit._id, visit);
+    console.log(`MockVisitService: Created visit - _id: ${visit._id}, visitId: ${visit.visitId}, userId: ${visit.userId}`);
+    console.log(`MockVisitService: Total visits in memory: ${visits.size}`);
     return visit;
   }
 
@@ -245,7 +247,7 @@ export class MockVisitService {
       visit.atopicComorbidities = { ...visit.atopicComorbidities, ...updates.atopicComorbidities };
     }
 
-    Object.assign(visit, updates, { 
+    Object.assign(visit, updates, {
       updatedAt: new Date(),
       hpi: undefined,
       allergyHistory: undefined,
@@ -259,8 +261,17 @@ export class MockVisitService {
   }
 
   static async updateVisitByVisitId(visitId: string, userId: string, updates: any): Promise<IMockVisit | null> {
+    console.log(`MockVisitService: Looking for visit - visitId: ${visitId}, userId: ${userId}`);
+    console.log(`MockVisitService: Total visits in memory: ${visits.size}`);
+    console.log(`MockVisitService: All visitIds: ${Array.from(visits.values()).map(v => v.visitId).join(', ')}`);
+
     const visit = Array.from(visits.values()).find(v => v.visitId === visitId && v.userId === userId);
-    if (!visit) return null;
+    if (!visit) {
+      console.log(`MockVisitService: Visit NOT FOUND`);
+      return null;
+    }
+
+    console.log(`MockVisitService: Found visit - _id: ${visit._id}`);
 
     // Handle partial updates properly
     if (updates.hpi) {
@@ -279,7 +290,7 @@ export class MockVisitService {
       visit.atopicComorbidities = { ...visit.atopicComorbidities, ...updates.atopicComorbidities };
     }
 
-    Object.assign(visit, updates, { 
+    Object.assign(visit, updates, {
       updatedAt: new Date(),
       hpi: undefined,
       allergyHistory: undefined,
@@ -288,6 +299,9 @@ export class MockVisitService {
       atopicComorbidities: undefined
     });
 
+    // Update the visit in the Map
+    visits.set(visit._id, visit);
+    console.log(`MockVisitService: Updated visit successfully`);
     return visit;
   }
 
@@ -297,11 +311,11 @@ export class MockVisitService {
 
   static async listVisits(userId: string, page = 1, limit = 20, status?: string): Promise<{ visits: IMockVisit[]; total: number }> {
     let userVisits = Array.from(visits.values()).filter(v => v.userId === userId);
-    
+
     if (status) {
       userVisits = userVisits.filter(v => v.status === status);
     }
-    
+
     const start = (page - 1) * limit;
     const end = start + limit;
     return {
