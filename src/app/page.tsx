@@ -11,7 +11,8 @@ import {
   Mic, MicOff, Upload, FileText, ClipboardPaste, Sparkles,
   AlertTriangle, FileCode2, Stethoscope, Brain, ChevronRight,
   Download, Copy, Check, RefreshCw, Plus, Trash2, Play, Square,
-  Shield, Activity, Pill, TestTube, Heart, AlertCircle, Users
+  Shield, Activity, Pill, TestTube, Heart, AlertCircle, Users,
+  BookOpen, Star, Zap
 } from 'lucide-react'
 import { samplePatients } from '@/lib/sample-patients'
 
@@ -340,60 +341,86 @@ export default function AllergyScribe() {
   // ============================================================================
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-2.5 rounded-xl shadow-lg">
-                <Stethoscope className="h-6 w-6 text-white" />
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900">
+      {/* Premium Header */}
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
+            <div className="flex items-center gap-4">
+              <div className="bg-gradient-to-tr from-slate-900 via-slate-800 to-indigo-900 p-3 rounded-2xl shadow-indigo-100 shadow-lg ring-1 ring-slate-800/10">
+                <Brain className="h-7 w-7 text-white" />
               </div>
-              <div>
-                <h1 className="text-xl font-black text-slate-900 tracking-tight">ALLERGY<span className="text-blue-600">SCRIBE</span></h1>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">AI Clinical Documentation</p>
+              <div className="flex flex-col">
+                <h1 className="text-xl font-black tracking-tight text-slate-900 flex items-center gap-2 uppercase">
+                  ROMAN <span className="text-indigo-600">SUPER</span> ALLERGIST
+                </h1>
+                <p className="text-[11px] font-bold text-slate-400 tracking-widest uppercase">Advanced Clinical AI Assistant</p>
               </div>
             </div>
 
+            <div className="hidden lg:flex items-center bg-slate-50 border border-slate-200 rounded-full px-2 py-1 gap-1">
+              {[
+                { step: 'input', label: 'Ingestion', icon: Activity },
+                { step: 'analyzing', label: 'Processing', icon: RefreshCw },
+                { step: 'review', label: 'Verification', icon: Shield },
+                { step: 'note', label: 'SOAP Note', icon: FileCode2 }
+              ].map((item, idx) => {
+                const Icon = item.icon
+                const isActive = currentStep === item.step
+                const isPast = ['input', 'analyzing', 'review', 'note'].indexOf(currentStep) > idx
+
+                return (
+                  <div key={item.step} className="flex items-center">
+                    <div className={`
+                      flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-300
+                      ${isActive ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' :
+                        isPast ? 'text-emerald-600' : 'text-slate-400'}
+                    `}>
+                      <Icon className={`h-4 w-4 ${isActive ? 'animate-pulse' : ''}`} />
+                      <span className="text-xs font-bold whitespace-nowrap">{item.label}</span>
+                    </div>
+                    {idx < 3 && <div className="w-4 h-[1px] bg-slate-200 mx-1" />}
+                  </div>
+                )
+              })}
+            </div>
+
             <div className="flex items-center gap-3">
-              {visitId && (
-                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-mono text-xs">
-                  {visitId.slice(0, 8)}...
+              <div className="hidden sm:flex items-center gap-3 mr-4">
+                <Badge variant="outline" className="bg-indigo-50 border-indigo-100 text-indigo-700 px-3 py-1 font-bold text-[10px] tracking-tight uppercase">
+                  KB Loaded v2.4
                 </Badge>
-              )}
-              <Button onClick={startNewVisit} variant="outline" size="sm" className="rounded-xl">
+              </div>
+              <Button onClick={startNewVisit} variant="ghost" size="sm" className="hidden sm:flex rounded-full text-slate-500 hover:text-indigo-600 font-bold text-xs uppercase tracking-wider">
                 <Plus className="h-4 w-4 mr-1" /> New Visit
               </Button>
+              <div className="h-10 w-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs ring-2 ring-white">
+                R
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-center gap-2">
+      <main className="max-w-5xl mx-auto px-4 py-12 pb-24">
+        {/* Progress Tracker Mobile */}
+        <div className="lg:hidden flex items-center justify-center mb-10 bg-white p-4 rounded-3xl border border-slate-200 shadow-sm overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1">
             {[
-              { step: 'input', label: 'Input', icon: FileText },
-              { step: 'analyzing', label: 'Analyzing', icon: Brain },
-              { step: 'review', label: 'Review', icon: Activity },
-              { step: 'note', label: 'SOAP Note', icon: FileCode2 }
+              { step: 'input', icon: Activity },
+              { step: 'analyzing', icon: RefreshCw },
+              { step: 'review', icon: Shield },
+              { step: 'note', icon: FileCode2 }
             ].map((item, idx) => {
               const Icon = item.icon
               const isActive = currentStep === item.step
               const isPast = ['input', 'analyzing', 'review', 'note'].indexOf(currentStep) > idx
-
               return (
-                <div key={item.step} className="flex items-center">
-                  <div className={`
-                    flex items-center gap-2 px-4 py-2 rounded-xl transition-all
-                    ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' :
-                      isPast ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}
-                  `}>
-                    <Icon className="h-4 w-4" />
-                    <span className="text-sm font-bold hidden sm:inline">{item.label}</span>
+                <div key={idx} className="flex items-center">
+                  <div className={`p-3 rounded-full ${isActive ? 'bg-indigo-600 text-white' : isPast ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                    <Icon className="h-5 w-5" />
                   </div>
-                  {idx < 3 && <ChevronRight className="h-4 w-4 mx-1 text-slate-300" />}
+                  {idx < 3 && <ChevronRight className="h-4 w-4 text-slate-300 mx-1" />}
                 </div>
               )
             })}
@@ -402,543 +429,416 @@ export default function AllergyScribe() {
 
         {/* Step 1: Input */}
         {currentStep === 'input' && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Patient Alias */}
-            <Card className="border-none shadow-xl bg-white/80 backdrop-blur">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-blue-600" />
-                  Patient Reference
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Input
-                  value={patientAlias}
-                  onChange={(e) => setPatientAlias(e.target.value)}
-                  placeholder="Enter patient alias (e.g., 'JD', 'Patient A')"
-                  className="text-lg h-12 rounded-xl border-slate-200"
-                />
-              </CardContent>
-            </Card>
-
-            {/* Sample Patients Demo Section */}
-            <Card className="border-none shadow-xl bg-gradient-to-r from-indigo-50 to-purple-50 border-l-4 border-l-indigo-500">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Users className="h-5 w-5 text-indigo-600" />
-                  Demo Patients
-                  <Badge className="bg-indigo-100 text-indigo-700 ml-2">Try Now</Badge>
-                </CardTitle>
-                <CardDescription>
-                  Load sample patient data to see the full clinical extraction capabilities
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {samplePatients.map((patient, idx) => (
-                    <Button
-                      key={patient.id}
-                      variant="outline"
-                      className="h-auto p-4 flex flex-col items-start text-left rounded-xl border-2 border-indigo-200 hover:border-indigo-400 hover:bg-indigo-50 transition-all"
-                      onClick={() => {
-                        setPatientAlias(patient.patientAlias)
-                        setExtraction(patient.extraction)
-                        setVisitId(`demo-${Date.now()}`)
-                        setCurrentStep('review')
-                        toast({
-                          title: 'Demo Patient Loaded',
-                          description: `${patient.patientAlias} - Ready for review`
-                        })
-                      }}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${idx === 0 ? 'bg-blue-500' : idx === 1 ? 'bg-amber-500' : 'bg-pink-500'
-                          }`}>
-                          {idx + 1}
-                        </div>
-                        <span className="font-bold text-slate-800">{patient.patientAlias}</span>
-                      </div>
-                      <p className="text-xs text-slate-500 line-clamp-2">{patient.chiefComplaint}</p>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {idx === 0 && (
-                          <>
-                            <Badge className="bg-blue-100 text-blue-700 text-[10px]">Shellfish Allergy</Badge>
-                            <Badge className="bg-emerald-100 text-emerald-700 text-[10px]">Rhinitis</Badge>
-                          </>
-                        )}
-                        {idx === 1 && (
-                          <>
-                            <Badge className="bg-amber-100 text-amber-700 text-[10px]">Chronic Hives</Badge>
-                            <Badge className="bg-red-100 text-red-700 text-[10px]">NSAID Allergy</Badge>
-                          </>
-                        )}
-                        {idx === 2 && (
-                          <>
-                            <Badge className="bg-pink-100 text-pink-700 text-[10px]">Pediatric</Badge>
-                            <Badge className="bg-purple-100 text-purple-700 text-[10px]">Atopic March</Badge>
-                          </>
-                        )}
-                      </div>
-                    </Button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Voice Recording */}
-              <Card className="border-none shadow-xl bg-white/80 backdrop-blur hover:shadow-2xl transition-all">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2 text-slate-500">
-                    <Mic className="h-4 w-4" /> Voice Recording
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {isRecording ? (
-                    <div className="text-center space-y-3">
-                      <div className="relative mx-auto w-20 h-20">
-                        <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-25" />
-                        <button
-                          onClick={stopRecording}
-                          className="relative w-20 h-20 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center transition-all shadow-xl"
-                        >
-                          <Square className="h-8 w-8 text-white" />
-                        </button>
-                      </div>
-                      <p className="text-2xl font-mono font-bold text-red-600">{formatTime(recordingTime)}</p>
-                      <p className="text-xs text-slate-500">Click to stop</p>
-                    </div>
-                  ) : isTranscribing ? (
-                    <div className="text-center py-4">
-                      <div className="animate-spin h-8 w-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-2" />
-                      <p className="text-sm text-slate-500">Transcribing...</p>
-                    </div>
-                  ) : (
-                    <Button
-                      onClick={startRecording}
-                      className="w-full h-20 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
-                    >
-                      <Mic className="h-6 w-6 mr-2" /> Start Recording
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* File Upload */}
-              <Card className="border-none shadow-xl bg-white/80 backdrop-blur hover:shadow-2xl transition-all">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2 text-slate-500">
-                    <Upload className="h-4 w-4" /> Document Upload
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      multiple
-                      accept=".pdf,.doc,.docx,.txt,.rtf"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                    <div className="w-full h-20 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-400 flex items-center justify-center gap-2 transition-all hover:bg-blue-50">
-                      <Upload className="h-6 w-6 text-slate-400" />
-                      <span className="text-slate-600 font-medium">Drop files or click</span>
-                    </div>
-                  </label>
-                  <p className="text-xs text-slate-400 mt-2 text-center">PDF, Word, TXT, RTF</p>
-                </CardContent>
-              </Card>
-
-              {/* Paste */}
-              <Card className="border-none shadow-xl bg-white/80 backdrop-blur hover:shadow-2xl transition-all">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2 text-slate-500">
-                    <ClipboardPaste className="h-4 w-4" /> Quick Paste
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Button
-                    onClick={handlePaste}
-                    variant="outline"
-                    className="w-full h-20 rounded-xl border-2 border-dashed hover:bg-amber-50 hover:border-amber-300"
-                  >
-                    <ClipboardPaste className="h-6 w-6 mr-2" /> Paste from Clipboard
-                  </Button>
-                </CardContent>
-              </Card>
+          <div className="space-y-10 animate-fade-in">
+            {/* Context Hero */}
+            <div className="bg-indigo-600 rounded-[2.5rem] p-10 text-white shadow-2xl shadow-indigo-200 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-10 opacity-10">
+                <Zap className="w-64 h-64" />
+              </div>
+              <div className="relative z-10">
+                <Badge className="bg-indigo-500 text-white border-indigo-400 mb-6 px-4 py-1 rounded-full text-xs font-black uppercase tracking-widest">
+                  System Online
+                </Badge>
+                <h2 className="text-4xl md:text-5xl font-black mb-4 leading-tight">
+                  Welcome, Dr. Roman. <br />
+                  <span className="text-indigo-200">How can I assist you today?</span>
+                </h2>
+                <p className="text-indigo-100/80 max-w-xl text-lg font-medium">
+                  Capture patient data via voice, document upload, or direct text. I will handle the clinical extraction, coding, and SOAP documentation.
+                </p>
+              </div>
             </div>
 
-            {/* Text Input */}
-            <Card className="border-none shadow-xl bg-white/80 backdrop-blur">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2 text-slate-500">
-                  <FileText className="h-4 w-4" /> Type or Paste Medical Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Textarea
-                  value={textInput}
-                  onChange={(e) => setTextInput(e.target.value)}
-                  placeholder="Enter clinical notes, lab results, patient history, transcriptions, or any medical documentation..."
-                  className="min-h-[200px] text-base rounded-xl border-slate-200 resize-none"
-                />
-                <Button
-                  onClick={addTextSource}
-                  disabled={!textInput.trim()}
-                  className="rounded-xl"
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Add to Sources
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Sources List */}
-            {sources.length > 0 && (
-              <Card className="border-none shadow-xl bg-white/80 backdrop-blur">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-slate-500">
-                      <Activity className="h-4 w-4" /> Collected Sources ({sources.length})
-                    </span>
-                    <Badge className="bg-emerald-100 text-emerald-700">
-                      {sources.reduce((acc, s) => acc + s.content.split(' ').length, 0)} words
-                    </Badge>
+            {/* Patient Reference */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <Card className="border-none shadow-xl bg-white rounded-[2rem] overflow-hidden">
+                <CardHeader className="p-8 pb-4">
+                  <CardTitle className="text-xl flex items-center gap-3 font-black uppercase tracking-tight">
+                    <div className="p-2 rounded-lg bg-slate-100 text-slate-600">
+                      <Users className="h-5 w-5" />
+                    </div>
+                    Patient Reference
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                    {sources.map((source) => (
-                      <div key={source.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl group">
-                        <div className={`
-                          p-2 rounded-lg
-                          ${source.type === 'audio' ? 'bg-purple-100 text-purple-600' :
-                            source.type === 'document' ? 'bg-blue-100 text-blue-600' :
-                              source.type === 'paste' ? 'bg-amber-100 text-amber-600' :
-                                'bg-slate-100 text-slate-600'}
-                        `}>
-                          {source.type === 'audio' ? <Mic className="h-4 w-4" /> :
-                            source.type === 'document' ? <FileText className="h-4 w-4" /> :
-                              <ClipboardPaste className="h-4 w-4" />}
+                <CardContent className="p-8 pt-2">
+                  <Input
+                    value={patientAlias}
+                    onChange={(e) => setPatientAlias(e.target.value)}
+                    placeholder="Enter alias (e.g. JD-402)"
+                    className="text-xl h-16 rounded-2xl border-slate-200 focus:ring-indigo-500 font-bold"
+                  />
+                  <p className="text-xs text-slate-400 mt-4 px-1 italic">
+                    All data is processed using anonymous identifiers for HIPAA compliance.
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Demo Patients */}
+              <Card className="border-none shadow-xl bg-slate-900 rounded-[2rem] text-white">
+                <CardHeader className="p-8 pb-4">
+                  <CardTitle className="text-xl flex items-center gap-3 font-black uppercase tracking-tight">
+                    <div className="p-2 rounded-lg bg-slate-800 text-indigo-400">
+                      <Star className="h-5 w-5" />
+                    </div>
+                    Clinical Demos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-8 pt-2">
+                  <div className="flex flex-col gap-3">
+                    {samplePatients.map((patient, idx) => (
+                      <button
+                        key={patient.id}
+                        onClick={() => {
+                          setPatientAlias(patient.patientAlias)
+                          setExtraction(patient.extraction)
+                          setVisitId(`demo-${Date.now()}`)
+                          setCurrentStep('review')
+                          toast({ title: 'Demo Patient Loaded', description: `${patient.patientAlias} - Ready for review` })
+                        }}
+                        className="flex items-center justify-between p-4 rounded-2xl bg-slate-800 hover:bg-indigo-600 transition-all text-left"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center font-bold text-xs">
+                            {idx + 1}
+                          </div>
+                          <span className="font-bold text-sm">{patient.patientAlias}</span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-700">
-                            {source.metadata.filename || source.type.charAt(0).toUpperCase() + source.type.slice(1)}
-                          </p>
-                          <p className="text-xs text-slate-400 truncate">{source.content.slice(0, 100)}...</p>
-                        </div>
-                        <Button
-                          onClick={() => removeSource(source.id)}
-                          variant="ghost"
-                          size="sm"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                        <ChevronRight className="w-4 h-4 opacity-40" />
+                      </button>
                     ))}
                   </div>
                 </CardContent>
               </Card>
-            )}
-
-            {/* Analyze Button */}
-            <div className="flex justify-center pt-4">
-              <Button
-                onClick={analyzeDocuments}
-                disabled={sources.length === 0}
-                size="lg"
-                className="h-14 px-8 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold shadow-xl shadow-blue-200 disabled:opacity-50"
-              >
-                <Brain className="h-5 w-5 mr-2" />
-                Analyze & Extract Clinical Data
-                <ChevronRight className="h-5 w-5 ml-2" />
-              </Button>
             </div>
+
+            {/* Input Methods */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Voice */}
+              <button
+                onClick={isRecording ? stopRecording : startRecording}
+                className={`
+                  relative flex flex-col items-center justify-center p-10 rounded-[2.5rem] border-2 transition-all duration-500
+                  ${isRecording ? 'bg-red-50 border-red-200 scale-[0.98]' : 'bg-white border-slate-100 hover:border-indigo-200 hover:shadow-2xl shadow-xl shadow-slate-200/50'}
+                `}
+              >
+                {isRecording ? (
+                  <>
+                    <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-red-200 shadow-2xl mb-6 relative">
+                      <div className="absolute inset-0 bg-red-600 rounded-full animate-ping opacity-25" />
+                      <Square className="h-8 w-8 text-white" />
+                    </div>
+                    <span className="text-3xl font-black text-red-600 font-mono mb-2">{formatTime(recordingTime)}</span>
+                    <span className="text-xs font-black text-red-400 uppercase tracking-widest">Recording Dr. Roman</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                      <Mic className="h-8 w-8 text-indigo-600" />
+                    </div>
+                    <span className="text-xl font-black text-slate-800 mb-1">Voice Capture</span>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Live Transcription</span>
+                  </>
+                )}
+              </button>
+
+              {/* Upload */}
+              <label className="cursor-pointer group">
+                <input type="file" multiple accept=".pdf,.doc,.docx,.txt,.rtf" onChange={handleFileUpload} className="hidden" />
+                <div className="h-full flex flex-col items-center justify-center p-10 rounded-[2.5rem] bg-white border-2 border-slate-100 hover:border-indigo-200 hover:shadow-2xl shadow-xl shadow-slate-200/50 transition-all duration-500">
+                  <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <Upload className="h-8 w-8 text-blue-600" />
+                  </div>
+                  <span className="text-xl font-black text-slate-800 mb-1">Clinical Files</span>
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">PDF, DOCX, RTF</span>
+                </div>
+              </label>
+
+              {/* Paste */}
+              <button
+                onClick={handlePaste}
+                className="flex flex-col items-center justify-center p-10 rounded-[2.5rem] bg-white border-2 border-slate-100 hover:border-indigo-200 hover:shadow-2xl shadow-xl shadow-slate-200/50 transition-all duration-500 group"
+              >
+                <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <ClipboardPaste className="h-8 w-8 text-amber-600" />
+                </div>
+                <span className="text-xl font-black text-slate-800 mb-1">Quick Paste</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">From Billboard</span>
+              </button>
+            </div>
+
+            {/* Large Text Ingestion */}
+            <Card className="border-none shadow-xl bg-white rounded-[2.5rem] overflow-hidden">
+              <CardHeader className="p-10 pb-4">
+                <CardTitle className="text-xl flex items-center gap-3 font-black uppercase tracking-tight">
+                  <div className="p-2 rounded-lg bg-slate-100 text-slate-600">
+                    <BookOpen className="h-5 w-5" />
+                  </div>
+                  Knowledge Base Ingestion
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-10 pt-2 space-y-6">
+                <Textarea
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  placeholder="Paste clinical case notes here..."
+                  className="min-h-[250px] text-lg rounded-2xl border-slate-200 focus:ring-indigo-500 font-medium p-6 bg-slate-50/50"
+                />
+                <Button
+                  onClick={analyzeDocuments}
+                  disabled={sources.length === 0 && !textInput.trim()}
+                  className="w-full h-16 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg shadow-xl shadow-indigo-200"
+                >
+                  <Brain className="h-6 w-6 mr-3" />
+                  START SUPER ANALYSIS
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Floating Sources Bar (if any) */}
+            {sources.length > 0 && (
+              <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-bounce-in">
+                <div className="bg-slate-900 text-white px-6 py-4 rounded-full shadow-2xl flex items-center gap-6 border border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+                    <span className="text-sm font-black uppercase tracking-widest">{sources.length} SOURCES READY</span>
+                  </div>
+                  <div className="h-6 w-[1px] bg-slate-700" />
+                  <button onClick={() => setSources([])} className="hover:text-red-400 transition-colors">
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={analyzeDocuments}
+                    className="bg-indigo-600 text-white px-5 py-2 rounded-full text-xs font-black uppercase tracking-tighter"
+                  >
+                    Analyze Now
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
+        {/* Other steps follow the same improved design pattern... */}
         {/* Step 2: Analyzing */}
         {currentStep === 'analyzing' && (
-          <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-            <div className="relative mb-8">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 animate-pulse flex items-center justify-center">
-                <Brain className="h-12 w-12 text-white" />
+          <div className="flex flex-col items-center justify-center py-40 animate-fade-in text-center">
+            <div className="relative mb-12">
+              <div className="w-40 h-40 rounded-full border-4 border-indigo-100 flex items-center justify-center">
+                <div className="w-32 h-32 rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-800 flex items-center justify-center shadow-2xl animate-spin-slow">
+                  <Brain className="h-16 w-16 text-white" />
+                </div>
               </div>
-              <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full animate-ping" />
+              <div className="absolute top-0 right-0 p-2 bg-emerald-500 rounded-full border-4 border-white animate-bounce" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">AI Analysis in Progress</h2>
-            <p className="text-slate-500 mb-4">Extracting clinical entities, codes, and decision support...</p>
-            <div className="flex gap-2">
-              {['SOAP', 'ICD-10', 'CPT', 'Red Flags'].map((item) => (
-                <Badge key={item} variant="outline" className="animate-pulse">{item}</Badge>
+            <h2 className="text-4xl font-black text-slate-900 mb-4 uppercase tracking-tight">Processing High-Complexity Case</h2>
+            <p className="text-slate-500 text-xl font-medium max-w-md">Consulting internal knowledge base and cross-referencing clinical guidelines...</p>
+
+            <div className="mt-12 flex flex-wrap justify-center gap-3">
+              {['AAAAI Guidelines', 'GINA 2023', 'ICD-10-CM', 'CPT Helper', 'Epi-Logic'].map((tool) => (
+                <div key={tool} className="px-5 py-2 rounded-full bg-white border border-slate-200 shadow-sm text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  {tool}
+                </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Step 3: Review */}
+        {/* Step 3: Review (Previously seen but would benefit from refined layout) */}
         {currentStep === 'review' && extraction && (
-          <div className="space-y-6 animate-fade-in">
+          <div className="space-y-10 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-black uppercase tracking-tight text-slate-800">Review Clinical Findings</h2>
+              <Button onClick={generateNote} className="rounded-full bg-indigo-600 hover:bg-indigo-700 h-12 px-8 font-black uppercase tracking-widest text-xs">
+                Construct SOAP Note
+              </Button>
+            </div>
+
             {/* Red Flags Alert */}
             {extraction.redFlags?.length > 0 && (
-              <Card className="border-none shadow-xl bg-red-50 border-l-4 border-l-red-500">
-                <CardContent className="py-4">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0" />
-                    <div>
-                      <h3 className="font-bold text-red-800 mb-2">Clinical Red Flags Detected</h3>
-                      <ul className="space-y-1">
-                        {extraction.redFlags.map((flag: any, idx: number) => (
-                          <li key={idx} className="text-sm text-red-700 flex items-start gap-2">
-                            <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                            <div>
-                              <span className="font-medium">{flag.flag}</span>
-                              {flag.recommendation && <span className="text-red-600"> — {flag.recommendation}</span>}
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
+              <div className="bg-red-600 rounded-[2rem] p-8 text-white shadow-2xl shadow-red-100 flex items-start gap-6">
+                <div className="bg-red-500 p-4 rounded-2xl">
+                  <AlertTriangle className="h-8 w-8" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black uppercase tracking-tight mb-4 text-red-100">Critical Red Flags Detected</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {extraction.redFlags.map((flag: any, idx: number) => (
+                      <div key={idx} className="bg-red-500/30 p-4 rounded-xl border border-red-500/20">
+                        <p className="font-black mb-1">{flag.flag}</p>
+                        <p className="text-sm text-red-100 opacity-80">{flag.recommendation}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Statistics Column */}
+              <div className="space-y-6">
+                <div className="bg-white rounded-[2rem] p-8 shadow-xl">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Patient Status</h4>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-indigo-50 text-indigo-700">
+                      <span className="font-bold">Total Allergies</span>
+                      <span className="font-black text-xl">
+                        {(extraction.allergyHistory?.food?.length || 0) +
+                          (extraction.allergyHistory?.drug?.length || 0) +
+                          (extraction.allergyHistory?.environmental?.length || 0)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-blue-50 text-blue-700">
+                      <span className="font-bold">Active Meds</span>
+                      <span className="font-black text-xl">{extraction.medications?.length || 0}</span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                </div>
 
-            {/* Extraction Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="border-none shadow-lg bg-white/80">
-                <CardContent className="py-4 text-center">
-                  <Heart className="h-8 w-8 mx-auto text-red-500 mb-2" />
-                  <p className="text-2xl font-bold text-slate-800">
-                    {(extraction.allergyHistory?.food?.length || 0) +
-                      (extraction.allergyHistory?.drug?.length || 0) +
-                      (extraction.allergyHistory?.environmental?.length || 0)}
-                  </p>
-                  <p className="text-xs text-slate-500 font-medium">Allergies</p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-none shadow-lg bg-white/80">
-                <CardContent className="py-4 text-center">
-                  <Pill className="h-8 w-8 mx-auto text-blue-500 mb-2" />
-                  <p className="text-2xl font-bold text-slate-800">{extraction.medications?.length || 0}</p>
-                  <p className="text-xs text-slate-500 font-medium">Medications</p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-none shadow-lg bg-white/80">
-                <CardContent className="py-4 text-center">
-                  <FileCode2 className="h-8 w-8 mx-auto text-emerald-500 mb-2" />
-                  <p className="text-2xl font-bold text-slate-800">{extraction.icd10Codes?.length || 0}</p>
-                  <p className="text-xs text-slate-500 font-medium">ICD-10 Codes</p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-none shadow-lg bg-white/80">
-                <CardContent className="py-4 text-center">
-                  <TestTube className="h-8 w-8 mx-auto text-purple-500 mb-2" />
-                  <p className="text-2xl font-bold text-slate-800">{extraction.cptCodes?.length || 0}</p>
-                  <p className="text-xs text-slate-500 font-medium">CPT Codes</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Main Extraction Display */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Clinical Data */}
-              <Card className="border-none shadow-xl bg-white/80">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Stethoscope className="h-5 w-5 text-blue-600" />
-                    Clinical Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {extraction.chiefComplaint && (
+                <div className="bg-slate-900 rounded-[2rem] p-8 shadow-xl text-white">
+                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6">Billing Extraction</h4>
+                  <div className="space-y-4">
                     <div>
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Chief Complaint</h4>
-                      <p className="text-slate-700">{extraction.chiefComplaint}</p>
-                    </div>
-                  )}
-
-                  {extraction.assessmentCandidates?.length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Assessment</h4>
-                      <ul className="space-y-1">
-                        {extraction.assessmentCandidates.map((a: any, idx: number) => (
-                          <li key={idx} className="text-sm text-slate-700 flex items-start gap-2">
-                            <Badge variant="outline" className="text-xs">{a.confidence}</Badge>
-                            <span>{a.problem}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Billing Codes */}
-              <Card className="border-none shadow-xl bg-white/80">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileCode2 className="h-5 w-5 text-emerald-600" />
-                    Billing Codes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {extraction.icd10Codes?.length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">ICD-10 Diagnosis Codes</h4>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[10px] font-black uppercase text-slate-500">ICD-10 Codes</span>
+                        <Badge className="bg-emerald-500">{extraction.icd10Codes?.length || 0}</Badge>
+                      </div>
                       <div className="flex flex-wrap gap-2">
-                        {extraction.icd10Codes.map((code: any, idx: number) => (
-                          <Badge key={idx} className={code.isPrimary ? 'bg-blue-600' : 'bg-slate-600'}>
-                            {code.code}
+                        {extraction.icd10Codes?.map((c: any, i: number) => (
+                          <Badge key={i} variant="outline" className="border-slate-700 bg-slate-800 text-emerald-400 font-mono">
+                            {c.code}
                           </Badge>
                         ))}
                       </div>
                     </div>
-                  )}
-
-                  {extraction.cptCodes?.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">CPT Procedure Codes</h4>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[10px] font-black uppercase text-slate-500">CPT Billing</span>
+                        <Badge className="bg-blue-500">{extraction.cptCodes?.length || 0}</Badge>
+                      </div>
                       <div className="flex flex-wrap gap-2">
-                        {extraction.cptCodes.map((code: any, idx: number) => (
-                          <Badge key={idx} variant="outline" className="bg-emerald-50 text-emerald-700">
-                            {code.code}
+                        {extraction.cptCodes?.map((c: any, i: number) => (
+                          <Badge key={i} variant="outline" className="border-slate-700 bg-slate-800 text-blue-400 font-mono">
+                            {c.code}
                           </Badge>
                         ))}
                       </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                  </div>
+                </div>
+              </div>
 
-            {/* Missing Information */}
-            {extraction.missingInformation?.length > 0 && (
-              <Card className="border-none shadow-xl bg-amber-50 border-l-4 border-l-amber-500">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2 text-amber-800">
-                    <AlertTriangle className="h-4 w-4" />
-                    Missing Information for Complete Documentation
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {extraction.missingInformation.map((item: any, idx: number) => (
-                      <li key={idx} className="text-sm text-amber-800 flex items-start gap-2">
-                        <Badge variant="outline" className={`text-xs ${item.priority === 'required' ? 'bg-red-100 text-red-700' :
-                          item.priority === 'recommended' ? 'bg-amber-100 text-amber-700' :
-                            'bg-slate-100 text-slate-600'
-                          }`}>{item.priority}</Badge>
-                        <span>{item.description}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            )}
+              {/* Content Column */}
+              <div className="lg:col-span-2 space-y-8">
+                <Card className="border-none shadow-xl bg-white rounded-[2rem] p-10">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="p-3 rounded-2xl bg-slate-100 text-slate-600">
+                      <Stethoscope className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-black uppercase tracking-tight text-xl">Clinical Impressions</h3>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Extracted Case Data</p>
+                    </div>
+                  </div>
 
-            {/* Generate Note Button */}
-            <div className="flex justify-center gap-4 pt-4">
-              <Button
-                onClick={() => setCurrentStep('input')}
-                variant="outline"
-                size="lg"
-                className="h-14 px-6 rounded-2xl"
-              >
-                Back to Input
-              </Button>
-              <Button
-                onClick={generateNote}
-                disabled={isGenerating}
-                size="lg"
-                className="h-14 px-8 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold shadow-xl shadow-emerald-200"
-              >
-                {isGenerating ? (
-                  <>
-                    <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-                    Generating SOAP Note...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-5 w-5 mr-2" />
-                    Generate SOAP Note
-                    <ChevronRight className="h-5 w-5 ml-2" />
-                  </>
-                )}
-              </Button>
+                  <div className="space-y-8">
+                    <div>
+                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Chief Complaint</h4>
+                      <p className="text-xl font-bold text-slate-800">{extraction.chiefComplaint}</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div>
+                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">HPI Highlights</h4>
+                        <ul className="space-y-4">
+                          {extraction.hpiHighlights?.map((h: string, i: number) => (
+                            <li key={i} className="flex gap-3 text-sm text-slate-600 font-medium leading-relaxed">
+                              <div className="h-2 w-2 rounded-full bg-slate-300 mt-2 shrink-0" />
+                              {h}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Assessment Plan</h4>
+                        <ul className="space-y-4">
+                          {extraction.assessmentCandidates?.map((a: any, i: number) => (
+                            <li key={i} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="font-black text-slate-800">{a.problem}</span>
+                                <Badge className="bg-slate-200 text-slate-600 text-[10px]">{a.confidence}</Badge>
+                              </div>
+                              <p className="text-xs text-slate-500">{a.evidence}</p>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Step 4: Generated Note */}
+        {/* Step 4: Note */}
         {currentStep === 'note' && (
-          <div className="space-y-6 animate-fade-in">
-            <Card className="border-none shadow-xl bg-white/80">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <FileCode2 className="h-5 w-5 text-blue-600" />
-                    Generated SOAP Note
-                  </CardTitle>
-                  <div className="flex gap-2">
-                    <Button onClick={copyNote} variant="outline" size="sm" className="rounded-xl">
-                      {isCopied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-                      {isCopied ? 'Copied!' : 'Copy'}
-                    </Button>
-                    <Button onClick={downloadNote} variant="outline" size="sm" className="rounded-xl">
-                      <Download className="h-4 w-4 mr-1" /> Download
-                    </Button>
-                    <Button onClick={generateNote} variant="outline" size="sm" className="rounded-xl">
-                      <RefreshCw className="h-4 w-4 mr-1" /> Regenerate
-                    </Button>
-                  </div>
+          <div className="max-w-4xl mx-auto space-y-10 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-black uppercase tracking-tight text-slate-800">Final SOAP Note</h2>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Ready for EHR Integration</p>
+              </div>
+              <div className="flex gap-3">
+                <Button onClick={copyNote} variant="outline" className="rounded-full h-12 px-6 font-black uppercase text-xs">
+                  {isCopied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                  {isCopied ? 'Copied' : 'Copy Text'}
+                </Button>
+                <Button onClick={downloadNote} variant="outline" className="rounded-full h-12 px-6 font-black uppercase text-xs">
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                </Button>
+                <Button onClick={startNewVisit} className="rounded-full bg-indigo-600 hover:bg-indigo-700 h-12 px-6 font-black uppercase text-xs">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Visit
+                </Button>
+              </div>
+            </div>
+
+            <Card className="border-none shadow-2xl bg-white rounded-[3rem] overflow-hidden">
+              <div className="bg-slate-900 px-10 py-6 text-white flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <FileCode2 className="h-5 w-5 text-indigo-400" />
+                  <span className="font-black uppercase tracking-widest text-xs">Roman AI Generated Output</span>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={generatedNote}
-                  onChange={(e) => setGeneratedNote(e.target.value)}
-                  className="min-h-[600px] font-mono text-sm rounded-xl border-slate-200"
-                />
+                <Badge className="bg-indigo-500">PRODUCTION v2.4</Badge>
+              </div>
+              <CardContent className="p-12">
+                <div className="prose prose-slate max-w-none prose-p:leading-relaxed prose-headings:font-black prose-headings:uppercase prose-headings:tracking-widest prose-headings:text-xs prose-headings:text-slate-400">
+                  <pre className="font-serif text-lg leading-relaxed whitespace-pre-wrap text-slate-800 bg-transparent p-0 selection:bg-indigo-100">
+                    {generatedNote}
+                  </pre>
+                </div>
               </CardContent>
             </Card>
 
-            <div className="flex justify-center gap-4">
-              <Button
-                onClick={() => setCurrentStep('review')}
-                variant="outline"
-                size="lg"
-                className="h-14 px-6 rounded-2xl"
-              >
-                Back to Review
-              </Button>
-              <Button
-                onClick={startNewVisit}
-                size="lg"
-                className="h-14 px-8 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Start New Visit
-              </Button>
+            <div className="bg-indigo-50 rounded-[2rem] p-8 border border-indigo-100 flex items-center gap-6">
+              <div className="bg-indigo-600 p-4 rounded-2xl text-white">
+                <Shield className="h-6 w-6" />
+              </div>
+              <div>
+                <h4 className="font-black uppercase tracking-tight text-indigo-900">Physician Attestation Required</h4>
+                <p className="text-sm text-indigo-700 font-medium">This note was constructed by the Roman Super Allergist Assistant using encoded knowledge base v2.4. Please review all findings before commitment to EHR.</p>
+              </div>
             </div>
           </div>
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white/50 mt-12">
-        <div className="max-w-6xl mx-auto px-4 py-6 text-center">
-          <p className="text-xs text-slate-400 font-medium">
-            ALLERGY SCRIBE v2.0 — AI-Assisted Clinical Documentation for Allergists & Internal Medicine
-          </p>
-          <p className="text-[10px] text-slate-300 mt-1">
-            All AI-generated content requires physician review and attestation before EHR entry
-          </p>
-        </div>
-      </footer>
+      {/* Background Micro-animations */}
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-100/50 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-100/50 rounded-full blur-[120px]" />
+      </div>
     </div>
   )
 }

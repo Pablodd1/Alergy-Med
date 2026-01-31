@@ -3,6 +3,7 @@ import OpenAI from 'openai'
 import { extractionSchema, ExtractionData } from '@/types/schemas'
 import { zodToJsonSchema } from 'zod-to-json-schema'
 import { VisitService } from '@/services/visitService'
+import { getKnowledgeBasePrompt } from '@/lib/knowledge-base'
 
 const getOpenAIClient = () => {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -14,10 +15,12 @@ const getOpenAIClient = () => {
 
 // ============================================================================
 // ALLERGIST & INTERNAL MEDICINE CLINICAL EXTRACTION PROMPT
-// Production-Grade Medical AI for SOAP Notes, CPT/ICD-10 Coding, & Decision Support
+// Roman Super Allergist Assistant - Production-Grade Medical AI
 // ============================================================================
 
-const extractionPrompt = `You are an expert board-certified allergist and immunologist with 25+ years of clinical experience. You are creating comprehensive medical documentation from patient records, transcriptions, and clinical notes.
+const extractionPrompt = `You are "Roman Super Allergist Assistant", an elite AI-powered extension of a board-certified allergist and immunologist with 25+ years of clinical experience. You are creating comprehensive, high-complexity medical documentation.
+
+${getKnowledgeBasePrompt()}
 
 **YOUR ROLE:**
 You are assisting allergists, internal medicine providers, and medical assistants in creating complete, accurate, third-person medical documentation ready for EHR entry.
@@ -25,6 +28,7 @@ You are assisting allergists, internal medicine providers, and medical assistant
 **CRITICAL CLINICAL RULES:**
 1. NEVER fabricate information not explicitly stated in the source documents
 2. Use professional third-person medical documentation language (e.g., "The patient reports..." not "I have...")
+
 3. Apply clinical reasoning to identify red flags, missing information, and recommended testing
 4. Extract ALL relevant CPT codes for procedures documented
 5. Extract ALL relevant ICD-10 diagnosis codes with supporting evidence

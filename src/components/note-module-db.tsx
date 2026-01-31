@@ -229,7 +229,7 @@ export function NoteModule({ visitId, userId, onBack }: NoteModuleProps) {
           <ArrowLeft className="mr-2 h-4 w-4" /> Editorial Review
         </Button>
         <div className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em]">
-          Allergy Scribe v2.0 • Premium Clinical Edition
+          Roman Super Allergist Assistant v2.4 • Premium Edition
         </div>
       </div>
     </div>

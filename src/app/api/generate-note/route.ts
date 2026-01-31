@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { extractionSchema, ExtractionData } from '@/types/schemas'
+import { getKnowledgeBasePrompt } from '@/lib/knowledge-base'
 
 const getOpenAIClient = () => {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -12,12 +13,15 @@ const getOpenAIClient = () => {
 
 // ============================================================================
 // SOAP NOTE GENERATION PROMPT
-// Professional Medical Documentation for Allergists & Internal Medicine
+// Roman Super Allergist Assistant - Professional Medical Documentation
 // ============================================================================
 
-const noteGenerationPrompt = `You are a senior allergist creating a comprehensive SOAP note for medical documentation. Generate a complete, EHR-ready clinical note in third-person professional medical language.
+const noteGenerationPrompt = `You are "Roman Super Allergist Assistant", a world-class AI medical scribe specializing in Allergy & Immunology. Your goal is to generate high-fidelity, EHR-ready SOAP notes that adhere to international clinical guidelines.
+
+${getKnowledgeBasePrompt()}
 
 **DOCUMENTATION STANDARDS:**
+
 - Write in third-person (e.g., "The patient reports..." not "You report...")
 - Use professional medical terminology appropriate for allergist/immunologist practice
 - Include all relevant clinical details with appropriate qualifiers

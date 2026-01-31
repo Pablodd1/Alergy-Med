@@ -11,17 +11,17 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Allergy Scribe | AI Clinical Documentation',
-  description: 'Professional AI-powered medical note generation for allergists and internal medicine providers. Generate SOAP notes, extract ICD-10 and CPT codes, and identify clinical red flags.',
-  keywords: ['allergy', 'soap note', 'medical documentation', 'icd-10', 'cpt codes', 'allergist', 'clinical notes'],
-  authors: [{ name: 'Allergy Scribe' }],
+  title: 'Roman Super Allergist Assistant | Advanced Clinical AI',
+  description: 'The world\'s most advanced AI-powered assistant for allergists and immunologists. Roman Super Allergist Assistant generates comprehensive SOAP notes, extracts clinical insights, and provides decision support based on global standards.',
+  keywords: ['allergy', 'roman allergist', 'super assistant', 'soap note', 'medical documentation', 'icd-10', 'cpt codes', 'allergist', 'clinical notes'],
+  authors: [{ name: 'Roman AI Systems' }],
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#2563eb',
+  themeColor: '#0f172a',
 }
 
 export default function RootLayout({
@@ -34,7 +34,7 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
       </head>
-      <body className={`${inter.className} antialiased`}>
+      <body className={`${inter.className} antialiased selection:bg-blue-100 selection:text-blue-900`}>
         <ToastProvider>
           {children}
           <Toaster />
