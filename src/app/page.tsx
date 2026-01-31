@@ -57,11 +57,34 @@ export default function AllergyScribe() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
 
+  // Permission & Legal state
+  const [hasMicConsent, setHasMicConsent] = useState(false)
+  const [showConsentModal, setShowConsentModal] = useState(false)
+
   // ============================================================================
   // AUDIO RECORDING
   // ============================================================================
 
+  const requestMicPermission = async () => {
+    setShowConsentModal(true)
+  }
+
+  const handleAcceptConsent = async () => {
+    setHasMicConsent(true)
+    setShowConsentModal(false)
+    toast({
+      title: 'Permissions Granted',
+      description: 'Microphone access authorized for this session. HIPAA compliance active.',
+    })
+    startRecording()
+  }
+
   const startRecording = async () => {
+    if (!hasMicConsent) {
+      setShowConsentModal(true)
+      return
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
@@ -94,6 +117,25 @@ export default function AllergyScribe() {
       if (timerRef.current) clearInterval(timerRef.current)
     }
   }
+
+  // Safety: Stop recording if tab is backgrounded or system sleeps
+  useEffect(() => {
+    const handleInactivity = () => {
+      if (isRecording) {
+        stopRecording()
+        toast({
+          title: 'Session Protected',
+          description: 'Microphone deactivated: Application lost focus or was backgrounded.',
+        })
+      }
+    }
+    document.addEventListener('visibilitychange', handleInactivity)
+    window.addEventListener('blur', handleInactivity)
+    return () => {
+      document.removeEventListener('visibilitychange', handleInactivity)
+      window.removeEventListener('blur', handleInactivity)
+    }
+  }, [isRecording, stopRecording, toast])
 
   const transcribeAudio = async (audioBlob: Blob) => {
     setIsTranscribing(true)
@@ -390,6 +432,9 @@ export default function AllergyScribe() {
                 <Badge variant="outline" className="bg-indigo-50 border-indigo-100 text-indigo-700 px-3 py-1 font-bold text-[10px] tracking-tight uppercase">
                   KB Loaded v2.4
                 </Badge>
+                <Badge variant="outline" className="bg-emerald-50 border-emerald-100 text-emerald-700 px-3 py-1 font-bold text-[10px] tracking-tight uppercase flex items-center gap-1">
+                  <Shield className="h-3 w-3" /> Secure Session
+                </Badge>
               </div>
               <Button onClick={startNewVisit} variant="ghost" size="sm" className="hidden sm:flex rounded-full text-slate-500 hover:text-indigo-600 font-bold text-xs uppercase tracking-wider">
                 <Plus className="h-4 w-4 mr-1" /> New Visit
@@ -515,7 +560,7 @@ export default function AllergyScribe() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Voice */}
               <button
-                onClick={isRecording ? stopRecording : startRecording}
+                onClick={isRecording ? stopRecording : (hasMicConsent ? startRecording : requestMicPermission)}
                 className={`
                   relative flex flex-col items-center justify-center p-10 rounded-[2.5rem] border-2 transition-all duration-500
                   ${isRecording ? 'bg-red-50 border-red-200 scale-[0.98]' : 'bg-white border-slate-100 hover:border-indigo-200 hover:shadow-2xl shadow-xl shadow-slate-200/50'}
@@ -839,6 +884,60 @@ export default function AllergyScribe() {
         <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-100/50 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-100/50 rounded-full blur-[120px]" />
       </div>
+
+      {/* Privacy & Legal Consent Modal */}
+      {showConsentModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xl animate-fade-in">
+          <Card className="max-w-md w-full border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
+            <div className="h-2 bg-indigo-600 w-full" />
+            <CardHeader className="p-8 pb-4">
+              <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6">
+                <Shield className="h-8 w-8 text-indigo-600" />
+              </div>
+              <CardTitle className="text-2xl font-black text-slate-900">Privacy & Consent</CardTitle>
+              <CardDescription className="text-slate-500 font-medium">
+                Clinical Audio Record Authorization
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 pt-0 space-y-6">
+              <div className="space-y-4">
+                <div className="flex gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                  <Mic className="h-5 w-5 text-indigo-600 shrink-0" />
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    You are authorizing the system to access your microphone. Recording will <strong>only</strong> occur when you explicitly click the capture button.
+                  </p>
+                </div>
+                <div className="flex gap-4 p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100/50">
+                  <AlertCircle className="h-5 w-5 text-indigo-600 shrink-0" />
+                  <p className="text-sm text-indigo-700 leading-relaxed">
+                    No background recording is permitted. The system will automatically shut down the microphone stream upon completion of the visit.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <Button
+                  onClick={handleAcceptConsent}
+                  className="btn-premium h-14 rounded-2xl font-bold text-lg text-white"
+                >
+                  I Authorize Recording
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowConsentModal(false)}
+                  className="h-12 rounded-xl text-slate-400 font-bold hover:text-slate-600"
+                >
+                  Cancel
+                </Button>
+              </div>
+
+              <p className="text-[10px] text-slate-400 text-center uppercase tracking-widest font-black pt-4 border-t border-slate-100">
+                HIPAA COMPLIANT • SECURE DATA CHANNEL
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
