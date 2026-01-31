@@ -100,6 +100,19 @@ ASSESSMENT
 [Summary of clinical decision-making process]
 
 ═══════════════════════════════════════════════════════════════════
+FUNCTIONAL & INTEGRATIVE ANALYSIS
+═══════════════════════════════════════════════════════════════════
+
+**Physiological Pathways:**
+[Analysis of histamine metabolism, cytokine balance, and TH2 skewing]
+
+**Environmental & Lifestyle Factors:**
+[Exposures, mold/mycotoxin risk, and nutritional status]
+
+**Integrative Recommendations:**
+[Non-pharmacological interventions, microbiome support, and HPA-axis modulation]
+
+═══════════════════════════════════════════════════════════════════
 PLAN
 ═══════════════════════════════════════════════════════════════════
 

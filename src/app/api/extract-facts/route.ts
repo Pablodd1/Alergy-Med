@@ -85,6 +85,14 @@ Extract ICD-10 codes for all identified conditions:
 - No documentation of epinephrine training
 - Incomplete family history of atopy
 
+**FUNCTIONAL & PRECISION MEDICINE CLUES:**
+- Gut health symptoms (Bloating, dysbiosis indicators)
+- Environmental exposures (Mold, mycotoxins, heavy metals)
+- Nutritional deficiencies (Vitamin D, Omega-3 signs)
+- Histamine intolerance symptoms (Flushing, DAO-risk foods)
+- Methylation markers or MTHFR status if mentioned
+- Cytokine profiles or advanced inflammatory markers (hs-CRP, FeNO)
+
 **JSON OUTPUT REQUIREMENTS:**
 Your response MUST be valid JSON matching the provided schema exactly.
 Use null for missing single values, empty arrays [] for missing lists.
