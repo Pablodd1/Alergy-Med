@@ -104,13 +104,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find the visit - no authentication required
-    const visit = await VisitService.findByVisitId(visitId);
-    if (!visit) {
-      return NextResponse.json(
-        { error: 'Visit not found' },
-        { status: 404 }
-      )
+    // Handle demo visits - skip DB lookup and persistence
+    const isDemoVisit = visitId.startsWith('demo-');
+    let visit = null;
+
+    if (!isDemoVisit) {
+      visit = await VisitService.findByVisitId(visitId);
+      if (!visit) {
+        return NextResponse.json(
+          { error: 'Visit not found' },
+          { status: 404 }
+        )
+      }
     }
 
     // Combine all sources with clear section markers
@@ -181,13 +186,15 @@ export async function POST(request: NextRequest) {
     const validatedData: ExtractionData = extractionSchema.parse(extractedData)
 
     // Update the visit in database
-    const updatedVisit = await VisitService.updateVisitFromExtraction(visitId, 'anonymous', validatedData);
+    if (!isDemoVisit) {
+      const updatedVisit = await VisitService.updateVisitFromExtraction(visitId, 'anonymous', validatedData);
 
-    if (!updatedVisit) {
-      return NextResponse.json(
-        { error: 'Failed to persist extraction to database' },
-        { status: 500 }
-      )
+      if (!updatedVisit) {
+        return NextResponse.json(
+          { error: 'Failed to persist extraction to database' },
+          { status: 500 }
+        )
+      }
     }
 
     return NextResponse.json({
